@@ -10,8 +10,7 @@
   .column { flex:1; min-width:240px; }
   .row { display:flex; align-items:center; margin-bottom:3px; gap:4px; }
   label { width:95px; font-size:11px; flex-shrink:0; }
-  input, select, textarea { flex:1; padding:2px 3px; font-size:11px; height:22px; box-sizing:border-box; }
-  textarea { height:50px; resize:none; }
+  input, select { flex:1; padding:2px 3px; font-size:11px; height:22px; box-sizing:border-box; }
   button { padding:3px 6px; margin:0; font-size:11px; cursor:pointer; }
   table { width:100%; border-collapse:collapse; margin-top:5px; font-size:11px; }
   th, td { border:1px solid #ccc; padding:2px 4px; text-align:left; }
@@ -27,6 +26,12 @@
   .planRow .col { display:flex; flex-direction:column; }
   .planRow .col input, .planRow .col select { font-size:11px; padding:2px 3px; height:22px; }
 
+  /* Column widths */
+  .col-plan { flex:1; min-width:100px; }
+  .col-addons { flex:1.5; min-width:130px; }
+  .col-promo { flex:0.8; min-width:80px; }
+  .col-discount { flex:0.8; min-width:80px; }
+
   /* MSISDN/SIM header */
   .msisdn-sim-header { display:flex; gap:6px; margin:4px 0 2px 0; font-weight:600; font-size:11px; }
   .msisdn-title { width:16ch; }
@@ -39,21 +44,21 @@
   .simInput { width:24ch; padding:2px 3px; font-size:11px; height:17px; }
   .msisdn-sim-row .action { display:flex; gap:4px; }
   .msisdn-sim-row button { padding:2px 5px; font-size:11px; }
-
-  .tickbox-group { display:flex; gap:12px; flex-wrap:wrap; margin-top:4px; }
 </style>
 </head>
 <body>
 
 <h3>Submission Mobility</h3>
 
-<!-- Send From dropdown -->
+<!-- Select logged-in Outlook email -->
 <div class="form-section">
   <div class="row">
     <label>Send From:</label>
-    <select id="sendFrom">
-      <option value="">Select Email</option>
-    </select>
+    <select id="emailSelect"></select>
+  </div>
+  <div class="row">
+    <label>Comments:</label>
+    <input type="text" id="comments" placeholder="Add comments here">
   </div>
 </div>
 
@@ -118,36 +123,17 @@
   <div id="planContainer"></div>
 </div>
 
-<!-- Tickboxes -->
-<div class="form-section">
-  <div style="display:flex; gap:20px; flex-wrap:wrap;">
-    <div>
-      <label>Send Submission To:</label>
-      <div id="tickSubmission" class="tickbox-group"></div>
-    </div>
-    <div>
-      <label>Send Discount/Other To:</label>
-      <div id="tickDiscount" class="tickbox-group"></div>
-    </div>
-  </div>
-  <div class="row" style="margin-top:6px;">
-    <label>CC:</label><input type="text" id="ccEmails" placeholder="Comma separated emails">
-  </div>
+<!-- Tickboxes & CC -->
+<div class="form-section" id="tickboxesContainer"></div>
+<div class="row">
+  <label>CC:</label>
+  <input type="text" id="ccInput" placeholder="Type emails here">
 </div>
 
-<!-- Comments -->
-<div class="form-section">
-  <textarea id="commentBox" placeholder="Add comments here"></textarea>
-</div>
-
-<!-- Preview & Submit -->
-<div class="form-section">
-  <button onclick="previewTable()">Preview Table</button>
-  <div id="preview" style="margin-top:8px;"></div>
-  <div style="margin-top:6px;">
-    <button onclick="submitEmail()">Submit</button>
-  </div>
-</div>
+<!-- Preview & submit -->
+<button onclick="previewTable()">Preview Table</button>
+<div id="preview" style="margin-top:8px;"></div>
+<button onclick="submitEmail()">Submit</button>
 
 <script>
 /* ---------------- Conditional fields ---------------- */
@@ -169,6 +155,7 @@ function addNewPlan(){
   const div = document.createElement('div');
   div.className = 'planBlock';
   div.id = 'plan' + planCount;
+
   div.innerHTML = `
     <div class="planHeader">
       <div class="planHeaderTop">
@@ -179,6 +166,7 @@ function addNewPlan(){
         <button type="button" onclick="removePlan(${planCount})">Remove Plan</button>
       </div>
     </div>
+
     <div class="planRow">
       <div class="col col-plan">
         <label class="compact">Plan</label>
@@ -195,28 +183,46 @@ function addNewPlan(){
       <div class="col col-discount">
         <label class="compact">Discount</label>
         <select class="discountInput">
-          <option>No discount</option><option>5%</option><option>10%</option><option>15%</option><option>20%</option>
+          <option>No discount</option>
+          <option>5%</option><option>10%</option><option>15%</option><option>20%</option>
           <option>5%ontop</option><option>10%ontop</option><option>15%ontop</option><option>20%ontop</option>
         </select>
       </div>
     </div>
+
     <div class="msisdn-sim-header" id="ms-header-${planCount}">
       <div class="msisdn-title">MSISDNs</div>
       <div class="sim-title">Sim serials</div>
     </div>
+
     <div class="msisdn-sim-section" id="ms-section-${planCount}"></div>
   `;
   container.appendChild(div);
   addMSISDNSIMRow(planCount);
 }
 
-/* ---------------- MSISDN/SIM ---------------- */
-function addMSISDNSIMRow(planId, msisdnVal = '', simVal = ''){
+function resetPlan(planId){
+  const planBlock = document.getElementById('plan' + planId);
+  if(!planBlock) return;
+  ['.planInput', '.addonInput', '.promoInput'].forEach(sel=>{ const el = planBlock.querySelector(sel); if(el) el.value=''; });
+  const disc = planBlock.querySelector('.discountInput');
+  if(disc) disc.selectedIndex=0;
+  const section = planBlock.querySelector('.msisdn-sim-section');
+  if(section){ section.innerHTML=''; addMSISDNSIMRow(planId); }
+}
+
+function removePlan(planId){
+  const p = document.getElementById('plan' + planId);
+  if(p) p.remove();
+}
+
+function addMSISDNSIMRow(planId, msisdnVal='', simVal=''){
   const planBlock = document.getElementById('plan' + planId);
   if(!planBlock) return;
   const section = planBlock.querySelector('.msisdn-sim-section');
-  const rowDiv = document.createElement('div'); rowDiv.className='msisdn-sim-row';
-  rowDiv.innerHTML = `
+  const rowDiv = document.createElement('div');
+  rowDiv.className='msisdn-sim-row';
+  rowDiv.innerHTML=`
     <div class="cell"><input type="text" class="msisdnInput" placeholder="MSISDN" value="${msisdnVal}"></div>
     <div class="cell"><input type="text" class="simInput" placeholder="SIM Serial" value="${simVal}"></div>
     <div class="action">
@@ -225,45 +231,21 @@ function addMSISDNSIMRow(planId, msisdnVal = '', simVal = ''){
     </div>
   `;
   section.appendChild(rowDiv);
-  const msInput=rowDiv.querySelector('.msisdnInput');
-  const simInput=rowDiv.querySelector('.simInput');
-  rowDiv.querySelector('.add-row').addEventListener('click', ()=>addMSISDNSIMRow(planId));
-  rowDiv.querySelector('.del-row').addEventListener('click', ()=>{
-    const rows=[...section.querySelectorAll('.msisdn-sim-row')];
-    if(rows.length>1) rowDiv.remove(); else { msInput.value=''; simInput.value=''; }
+  const addBtn = rowDiv.querySelector('.add-row');
+  const delBtn = rowDiv.querySelector('.del-row');
+  addBtn.addEventListener('click',()=>addMSISDNSIMRow(planId));
+  delBtn.addEventListener('click',()=>{
+    const rows=Array.from(section.querySelectorAll('.msisdn-sim-row'));
+    if(rows.length>1) rowDiv.remove();
+    else { rowDiv.querySelector('.msisdnInput').value=''; rowDiv.querySelector('.simInput').value=''; }
   });
 }
 
-/* ---------------- Load tickboxes from info.txt ---------------- */
-function loadTickboxes(){
-  fetch('info.txt').then(r=>r.text()).then(txt=>{
-    const blocks = txt.split(/\n(?=\w)/);
-    const tickSubmission=document.getElementById('tickSubmission');
-    const tickDiscount=document.getElementById('tickDiscount');
-    blocks.forEach(b=>{
-      const nameMatch=b.match(/name:\s*(.+)/i);
-      const emailMatch=b.match(/email:\s*(.+)/i);
-      if(nameMatch && emailMatch){
-        const name=nameMatch[1].trim();
-        const email=emailMatch[1].trim();
-        const cb1=document.createElement('label');
-        cb1.innerHTML=`<input type="checkbox" value="${email}" data-name="${name}"> ${name}`;
-        tickSubmission.appendChild(cb1);
-        const cb2=document.createElement('label');
-        cb2.innerHTML=`<input type="checkbox" value="${email}" data-name="${name}"> ${name}`;
-        tickDiscount.appendChild(cb2);
-      }
-    });
-  });
-}
-
-/* ---------------- Preview ---------------- */
+/* ---------------- Preview Table ---------------- */
 function previewTable(){
   const A = document.getElementById('accountName').value||'';
   const B1 = document.getElementById('accountNumber').value||'';
   const C = document.getElementById('agentId').value||'';
-  const comment = document.getElementById('commentBox').value||'';
-
   const plans=[];
   document.querySelectorAll('.planBlock').forEach(pr=>{
     const plan = pr.querySelector('.planInput').value||'';
@@ -272,58 +254,77 @@ function previewTable(){
     const discount = pr.querySelector('.discountInput').value||'';
     const msisdns=[...pr.querySelectorAll('.msisdnInput')].map(i=>i.value).filter(Boolean);
     const simserials=[...pr.querySelectorAll('.simInput')].map(i=>i.value).filter(Boolean);
-    plans.push({ plan, addon, promo, discount, msisdns, simserials });
+    plans.push({plan, addon, promo, discount, msisdns, simserials});
   });
-
-  // Selected tickboxes for names
-  const selectedNames=[...document.querySelectorAll('#tickSubmission input:checked')].map(i=>i.dataset.name);
-  let table = `<div>Hi ${selectedNames.join(', ')},<br><br>
-  please action the below request;<br><br>
-  ${comment}<br><br>
-  <table>
+  let table=`<table>
     <tr><th>Account Number</th><th>Account Name</th><th>Agent ID</th></tr>
-    <tr><td>${B1}</td><td>${A}</td><td>${C}</td></tr>
+    <tr><td>${escapeHtml(B1)}</td><td>${escapeHtml(A)}</td><td>${escapeHtml(C)}</td></tr>
     <tr><th>MSISDN(s)</th><th>Sim serial(s)</th><th>Plan(s)</th><th>Addon(s)</th><th>Promo</th><th>Discount</th><th>Spend Limit</th></tr>`;
   plans.forEach(p=>{
     const rows=Math.max(p.msisdns.length,p.simserials.length,1);
     for(let i=0;i<rows;i++){
       table+=`<tr>
-        <td>${p.msisdns[i]||''}</td>
-        <td>${p.simserials[i]||''}</td>
-        <td>${p.plan||''}</td>
-        <td>${p.addon||''}</td>
-        <td>${p.promo||''}</td>
-        <td>${p.discount||''}</td>
+        <td>${escapeHtml(p.msisdns[i]||'')}</td>
+        <td>${escapeHtml(p.simserials[i]||'')}</td>
+        <td>${escapeHtml(p.plan||'')}</td>
+        <td>${escapeHtml(p.addon||'')}</td>
+        <td>${escapeHtml(p.promo||'')}</td>
+        <td>${escapeHtml(p.discount||'')}</td>
         <td>0.01</td>
       </tr>`;
     }
   });
-  table+='</table></div>';
+  table+=`</table>`;
   document.getElementById('preview').innerHTML=table;
 }
 
-/* ---------------- Submit (Electron integration) ---------------- */
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------------- Electron API ---------------- */
+window.electronAPI.getOutlookEmails().then(emails=>{
+  const sel=document.getElementById('emailSelect');
+  emails.forEach(e=>{ const opt=document.createElement('option'); opt.value=e; opt.textContent=e; sel.appendChild(opt); });
+});
+
+const tickData=window.electronAPI.getTickboxEmails();
+const tickContainer=document.getElementById('tickboxesContainer');
+tickContainer.innerHTML=`<div class="row"><div style="flex:1"><strong>Send Submission To</strong></div><div style="flex:1"><strong>Send Discount/Other To</strong></div></div>`;
+Object.keys(tickData).forEach(k=>{
+  const tb=tickData[k];
+  const div=document.createElement('div');
+  div.className='row';
+  div.innerHTML=`
+    <div style="flex:1"><input type="checkbox" class="sendSub" value="${tb.email}"> ${tb.name}</div>
+    <div style="flex:1"><input type="checkbox" class="sendDisc" value="${tb.email}"> ${tb.name}</div>
+  `;
+  tickContainer.appendChild(div);
+});
+
+/* ---------------- Submit Email ---------------- */
 function submitEmail(){
-  const fromEmail=document.getElementById('sendFrom').value;
-  if(!fromEmail){ alert('Select sender email'); return; }
-  const recipients=[...document.querySelectorAll('#tickSubmission input:checked')].map(i=>i.value);
-  if(recipients.length===0){ alert('Select at least one recipient'); return; }
-  const cc=[...document.querySelectorAll('#tickSubmission input:checked')].map(i=>i.value);
-  const ccInput=document.getElementById('ccEmails').value.split(',').map(e=>e.trim()).filter(Boolean);
-  const finalCC=[...new Set([...cc, ...ccInput, fromEmail])];
+  const from=document.getElementById('emailSelect').value;
+  const comments=document.getElementById('comments').value;
+  const cc=document.getElementById('ccInput').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const to=Array.from(document.querySelectorAll('.sendSub:checked')).map(cb=>cb.value);
+  const subject='Submission Mobility Request';
+  const previewHtml=document.getElementById('preview').innerHTML;
+  const body=`Hi ${to.join(', ')}
 
-  const tableHTML=document.getElementById('preview').innerHTML;
+Please action the below request:
 
-  // Example: send via Electron + nodemailer
-  window.electron.sendEmail({from: fromEmail, to: recipients, cc: finalCC, html: tableHTML});
-  alert('Email sent (stub)'); // replace with real callback
+${comments}
+
+${previewHtml}`;
+  cc.push(from);
+  window.electronAPI.sendEmail({from,to,cc,subject,body})
+    .then(msg=>alert(msg))
+    .catch(err=>alert('Error: '+err));
 }
 
-/* ---------------- Init ---------------- */
+/* --- init --- */
 addNewPlan();
 toggleAccountFields();
 toggleMovementFields();
-loadTickboxes();
 </script>
 </body>
 </html>
