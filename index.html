@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Desktop App - Full Screen Tabs</title>
+<style>
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+}
+
+.tabs {
+    display: flex;
+    width: 100%;
+    height: 50px;
+    background: #f0f0f0;
+    border-bottom: 1px solid #ccc;
+}
+
+.tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: bold;
+    border-right: 1px solid #ccc;
+    transition: background 0.2s;
+}
+
+.tab:last-child {
+    border-right: none;
+}
+
+.tab.active {
+    background: white;
+    color: #000;
+}
+
+.tab:hover {
+    background: #e0e0e0;
+}
+
+.tab-content {
+    width: 100%;
+    height: calc(100% - 50px); /* subtract tabs height */
+    border: none;
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+</style>
+</head>
+<body>
+
+<div class="tabs">
+    <div class="tab active" onclick="openTab('submission')">Submission</div>
+    <div class="tab" onclick="openTab('modification')">Modification</div>
+    <div class="tab" onclick="openTab('discount')">Discount</div>
+    <div class="tab" onclick="openTab('aps')">APS</div>
+</div>
+
+<!-- Iframes for each tab -->
+<iframe id="submission" class="tab-content active" src="tabs/submission.html"></iframe>
+<iframe id="modification" class="tab-content" src="tabs/modification.html"></iframe>
+<iframe id="discount" class="tab-content" src="tabs/discount.html"></iframe>
+<iframe id="aps" class="tab-content" src="tabs/aps.html"></iframe>
+
+<script>
+function openTab(tabId) {
+    // Remove active class from all tabs
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    // Hide all iframes
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+    // Set clicked tab active
+    const tabIndex = Array.from(document.querySelectorAll('.tab')).findIndex(t => t.getAttribute('onclick').includes(tabId));
+    document.querySelectorAll('.tab')[tabIndex].classList.add('active');
+
+    // Show corresponding iframe
+    document.getElementById(tabId).classList.add('active');
+}
+
+// Ensure first tab is shown on load
+openTab('submission');
+</script>
+
+</body>
+</html>
