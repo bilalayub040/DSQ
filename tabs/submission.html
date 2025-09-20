@@ -16,30 +16,26 @@
   table { width:100%; border-collapse:collapse; margin-top:5px; font-size:11px; }
   th, td { border:1px solid #ccc; padding:2px 4px; text-align:left; }
 
-  /* Plan block and layout */
+  /* Plan block */
   .planBlock { border:1px solid #aaa; padding:6px; margin-bottom:6px; border-radius:4px; }
   .planHeader { display:flex; flex-direction:column; align-items:flex-start; gap:4px; margin-bottom:4px; }
   .planHeaderTop { display:flex; justify-content:space-between; width:100%; align-items:center; }
   .planName { margin:0; font-size:13px; }
   .planControls { display:flex; gap:6px; }
-
   .planRow { display:flex; gap:8px; margin-top:4px; align-items:flex-start; flex-wrap:nowrap; }
   .planRow .col { display:flex; flex-direction:column; }
   .planRow .col input, .planRow .col select { font-size:11px; padding:2px 3px; height:22px; }
 
-  /* MSISDN/SIM header */
+  /* MSISDN/SIM */
   .msisdn-sim-header { display:flex; gap:6px; margin:4px 0 2px 0; font-weight:600; font-size:11px; }
   .msisdn-title { width:16ch; }
   .sim-title { width:24ch; }
-
-  /* MSISDN/SIM rows */
   .msisdn-sim-section { display:flex; flex-direction:column; gap:1px; }
   .msisdn-sim-row { display:flex; align-items:center; gap:3px; }
   .msisdnInput { width:16ch; padding:2px 3px; font-size:11px; height:17px; }
   .simInput { width:24ch; padding:2px 3px; font-size:11px; height:17px; }
   .msisdn-sim-row .action { display:flex; gap:4px; }
   .msisdn-sim-row button { padding:2px 5px; font-size:11px; }
-
   .tickbox-group { display:flex; gap:12px; flex-wrap:wrap; margin-top:4px; }
 </style>
 </head>
@@ -47,7 +43,7 @@
 
 <h3>Submission Mobility</h3>
 
-<!-- Send From dropdown -->
+<!-- Send From -->
 <div class="form-section">
   <div class="row">
     <label>Send From:</label>
@@ -57,6 +53,7 @@
   </div>
 </div>
 
+<!-- Account Info -->
 <div class="form-section flex-row">
   <div class="column">
     <div class="row">
@@ -66,13 +63,10 @@
         <option value="existing">Existing</option>
       </select>
     </div>
-
     <div class="row"><label>Account Name:</label><input type="text" id="accountName"></div>
-
     <div id="existingFields" class="row" style="display:none;">
       <label>Account Number:</label><input type="text" id="accountNumber">
     </div>
-
     <div id="newFields">
       <div class="row"><label>CR:</label><input type="text" id="cr"></div>
       <div class="row"><label>Dynamic ID:</label><input type="text" id="dynamicId"></div>
@@ -87,7 +81,6 @@
         </select>
       </div>
     </div>
-
     <div class="row"><label>Agent ID:</label><input type="text" id="agentId"></div>
   </div>
 
@@ -100,7 +93,6 @@
         <option value="notnow">Not Now</option>
       </select>
     </div>
-
     <div id="movementFields" style="display:none;">
       <div class="row"><label>Parent Agent ID:</label><input type="text" id="parentAgentId"></div>
       <div class="row"><label>Dynamic ID:</label><input type="text" id="movementDynamicId"></div>
@@ -110,6 +102,7 @@
   </div>
 </div>
 
+<!-- Plans -->
 <div class="form-section">
   <h4>Plans</h4>
   <div style="margin-bottom:6px;">
@@ -161,7 +154,7 @@ function toggleMovementFields(){
   document.getElementById('movementFields').style.display = (val === 'yes') ? 'block' : 'none';
 }
 
-/* ---------------- Plans & rows ---------------- */
+/* ---------------- Plans ---------------- */
 let planCount = 0;
 function addNewPlan(){
   planCount++;
@@ -180,27 +173,17 @@ function addNewPlan(){
       </div>
     </div>
     <div class="planRow">
-      <div class="col col-plan">
-        <label class="compact">Plan</label>
-        <input type="text" class="planInput" placeholder="Plan">
-      </div>
-      <div class="col col-addons">
-        <label class="compact">Addons</label>
-        <input type="text" class="addonInput" placeholder="Addons">
-      </div>
-      <div class="col col-promo">
-        <label class="compact">Promo</label>
-        <input type="text" class="promoInput" placeholder="Promo">
-      </div>
-      <div class="col col-discount">
-        <label class="compact">Discount</label>
+      <div class="col"><label>Plan</label><input type="text" class="planInput" placeholder="Plan"></div>
+      <div class="col"><label>Addons</label><input type="text" class="addonInput" placeholder="Addons"></div>
+      <div class="col"><label>Promo</label><input type="text" class="promoInput" placeholder="Promo"></div>
+      <div class="col"><label>Discount</label>
         <select class="discountInput">
           <option>No discount</option><option>5%</option><option>10%</option><option>15%</option><option>20%</option>
           <option>5%ontop</option><option>10%ontop</option><option>15%ontop</option><option>20%ontop</option>
         </select>
       </div>
     </div>
-    <div class="msisdn-sim-header" id="ms-header-${planCount}">
+    <div class="msisdn-sim-header">
       <div class="msisdn-title">MSISDNs</div>
       <div class="sim-title">Sim serials</div>
     </div>
@@ -210,84 +193,83 @@ function addNewPlan(){
   addMSISDNSIMRow(planCount);
 }
 
-/* ---------------- MSISDN/SIM ---------------- */
-function addMSISDNSIMRow(planId, msisdnVal = '', simVal = ''){
-  const planBlock = document.getElementById('plan' + planId);
+function addMSISDNSIMRow(planId, msisdnVal='', simVal=''){
+  const planBlock = document.getElementById('plan'+planId);
   if(!planBlock) return;
   const section = planBlock.querySelector('.msisdn-sim-section');
-  const rowDiv = document.createElement('div'); rowDiv.className='msisdn-sim-row';
+  const rowDiv = document.createElement('div');
+  rowDiv.className = 'msisdn-sim-row';
   rowDiv.innerHTML = `
-    <div class="cell"><input type="text" class="msisdnInput" placeholder="MSISDN" value="${msisdnVal}"></div>
-    <div class="cell"><input type="text" class="simInput" placeholder="SIM Serial" value="${simVal}"></div>
+    <div><input type="text" class="msisdnInput" placeholder="MSISDN" value="${msisdnVal}"></div>
+    <div><input type="text" class="simInput" placeholder="SIM Serial" value="${simVal}"></div>
     <div class="action">
       <button type="button" class="add-row">+</button>
       <button type="button" class="del-row">-</button>
     </div>
   `;
   section.appendChild(rowDiv);
-  const msInput=rowDiv.querySelector('.msisdnInput');
-  const simInput=rowDiv.querySelector('.simInput');
   rowDiv.querySelector('.add-row').addEventListener('click', ()=>addMSISDNSIMRow(planId));
   rowDiv.querySelector('.del-row').addEventListener('click', ()=>{
-    const rows=[...section.querySelectorAll('.msisdn-sim-row')];
-    if(rows.length>1) rowDiv.remove(); else { msInput.value=''; simInput.value=''; }
+    const rows = [...section.querySelectorAll('.msisdn-sim-row')];
+    if(rows.length>1) rowDiv.remove();
+    else { rowDiv.querySelector('.msisdnInput').value=''; rowDiv.querySelector('.simInput').value=''; }
   });
 }
 
-/* ---------------- Load tickboxes from info.txt ---------------- */
-function loadTickboxes(){
-  fetch('info.txt').then(r=>r.text()).then(txt=>{
-    const blocks = txt.split(/\n(?=\w)/);
-    const tickSubmission=document.getElementById('tickSubmission');
-    const tickDiscount=document.getElementById('tickDiscount');
-    blocks.forEach(b=>{
-      const nameMatch=b.match(/name:\s*(.+)/i);
-      const emailMatch=b.match(/email:\s*(.+)/i);
-      if(nameMatch && emailMatch){
-        const name=nameMatch[1].trim();
-        const email=emailMatch[1].trim();
-        const cb1=document.createElement('label');
-        cb1.innerHTML=`<input type="checkbox" value="${email}" data-name="${name}"> ${name}`;
-        tickSubmission.appendChild(cb1);
-        const cb2=document.createElement('label');
-        cb2.innerHTML=`<input type="checkbox" value="${email}" data-name="${name}"> ${name}`;
-        tickDiscount.appendChild(cb2);
-      }
-    });
+/* ---------------- Load SendFrom and Tickboxes ---------------- */
+async function loadSendFrom(){
+  const emails = await window.electronAPI.getOutlookEmails();
+  const select = document.getElementById('sendFrom');
+  emails.forEach(e => {
+    const opt = document.createElement('option');
+    opt.value = e;
+    opt.textContent = e;
+    select.appendChild(opt);
   });
 }
 
-/* ---------------- Preview ---------------- */
+async function loadTickboxes(){
+  const data = await window.electronAPI.getTickboxEmails();
+  const tickSubmission = document.getElementById('tickSubmission');
+  const tickDiscount = document.getElementById('tickDiscount');
+  data.forEach(d=>{
+    const cb1=document.createElement('label');
+    cb1.innerHTML=`<input type="checkbox" value="${d.email}" data-name="${d.name}"> ${d.name}`;
+    tickSubmission.appendChild(cb1);
+    const cb2=document.createElement('label');
+    cb2.innerHTML=`<input type="checkbox" value="${d.email}" data-name="${d.name}"> ${d.name}`;
+    tickDiscount.appendChild(cb2);
+  });
+}
+
+/* ---------------- Preview Table ---------------- */
 function previewTable(){
   const A = document.getElementById('accountName').value||'';
   const B1 = document.getElementById('accountNumber').value||'';
   const C = document.getElementById('agentId').value||'';
   const comment = document.getElementById('commentBox').value||'';
 
-  const plans=[];
+  const plans = [];
   document.querySelectorAll('.planBlock').forEach(pr=>{
     const plan = pr.querySelector('.planInput').value||'';
     const addon = pr.querySelector('.addonInput').value||'';
     const promo = pr.querySelector('.promoInput').value||'';
     const discount = pr.querySelector('.discountInput').value||'';
-    const msisdns=[...pr.querySelectorAll('.msisdnInput')].map(i=>i.value).filter(Boolean);
-    const simserials=[...pr.querySelectorAll('.simInput')].map(i=>i.value).filter(Boolean);
-    plans.push({ plan, addon, promo, discount, msisdns, simserials });
+    const msisdns = [...pr.querySelectorAll('.msisdnInput')].map(i=>i.value).filter(Boolean);
+    const simserials = [...pr.querySelectorAll('.simInput')].map(i=>i.value).filter(Boolean);
+    plans.push({plan, addon, promo, discount, msisdns, simserials});
   });
 
-  // Selected tickboxes for names
-  const selectedNames=[...document.querySelectorAll('#tickSubmission input:checked')].map(i=>i.dataset.name);
-  let table = `<div>Hi ${selectedNames.join(', ')},<br><br>
-  please action the below request;<br><br>
-  ${comment}<br><br>
-  <table>
-    <tr><th>Account Number</th><th>Account Name</th><th>Agent ID</th></tr>
-    <tr><td>${B1}</td><td>${A}</td><td>${C}</td></tr>
-    <tr><th>MSISDN(s)</th><th>Sim serial(s)</th><th>Plan(s)</th><th>Addon(s)</th><th>Promo</th><th>Discount</th><th>Spend Limit</th></tr>`;
+  const selectedNames = [...document.querySelectorAll('#tickSubmission input:checked')].map(i=>i.dataset.name);
+  let table = `<div>Hi ${selectedNames.join(', ')},<br><br>${comment}<br><br>
+    <table>
+      <tr><th>Account Number</th><th>Account Name</th><th>Agent ID</th></tr>
+      <tr><td>${B1}</td><td>${A}</td><td>${C}</td></tr>
+      <tr><th>MSISDN(s)</th><th>Sim serial(s)</th><th>Plan(s)</th><th>Addon(s)</th><th>Promo</th><th>Discount</th><th>Spend Limit</th></tr>`;
   plans.forEach(p=>{
-    const rows=Math.max(p.msisdns.length,p.simserials.length,1);
+    const rows = Math.max(p.msisdns.length,p.simserials.length,1);
     for(let i=0;i<rows;i++){
-      table+=`<tr>
+      table += `<tr>
         <td>${p.msisdns[i]||''}</td>
         <td>${p.simserials[i]||''}</td>
         <td>${p.plan||''}</td>
@@ -298,58 +280,30 @@ function previewTable(){
       </tr>`;
     }
   });
-  table+='</table></div>';
-  document.getElementById('preview').innerHTML=table;
+  table += '</table></div>';
+  document.getElementById('preview').innerHTML = table;
 }
 
-/* ---------------- Submit (Electron integration) ---------------- */
-function submitEmail(){
-  const fromEmail=document.getElementById('sendFrom').value;
+/* ---------------- Submit Email ---------------- */
+async function submitEmail(){
+  const fromEmail = document.getElementById('sendFrom').value;
   if(!fromEmail){ alert('Select sender email'); return; }
-  const recipients=[...document.querySelectorAll('#tickSubmission input:checked')].map(i=>i.value);
+  const recipients = [...document.querySelectorAll('#tickSubmission input:checked')].map(i=>i.value);
   if(recipients.length===0){ alert('Select at least one recipient'); return; }
-  const cc=[...document.querySelectorAll('#tickSubmission input:checked')].map(i=>i.value);
-  const ccInput=document.getElementById('ccEmails').value.split(',').map(e=>e.trim()).filter(Boolean);
-  const finalCC=[...new Set([...cc, ...ccInput, fromEmail])];
-
-  const tableHTML=document.getElementById('preview').innerHTML;
-
-  // Example: send via Electron + nodemailer
-  window.electron.sendEmail({from: fromEmail, to: recipients, cc: finalCC, html: tableHTML});
-  alert('Email sent (stub)'); // replace with real callback
+  const ccInput = document.getElementById('ccEmails').value.split(',').map(e=>e.trim()).filter(Boolean);
+  const cc = [...new Set([...recipients, ...ccInput, fromEmail])];
+  const html = document.getElementById('preview').innerHTML;
+  const res = await window.electronAPI.sendEmail({from:fromEmail, to:recipients, cc, html});
+  if(res.success) alert('Email sent successfully'); else alert('Error sending: '+res.error);
 }
-/* ---------------- Load Outlook Emails ---------------- */
-async function loadSendFrom(){
-  console.log("loadSendFrom() called");
-  if (window.electronAPI && window.electronAPI.getOutlookEmails) {
-    try {
-      const emails = await window.electronAPI.getOutlookEmails();
-      console.log("Outlook accounts:", emails);
-      const select = document.getElementById('sendFrom');
-      select.innerHTML = '<option value="">Select Email</option>';
-      emails.forEach(e => {
-        const opt = document.createElement('option');
-        opt.value = e;
-        opt.textContent = e;
-        select.appendChild(opt);
-      });
-    } catch(err) {
-      console.error("Failed to load Outlook emails:", err);
-    }
-  } else {
-    console.warn("electronAPI not available");
-  }
-}
-window.onload = loadSendFrom;
-
 
 /* ---------------- Init ---------------- */
 addNewPlan();
 toggleAccountFields();
 toggleMovementFields();
+loadSendFrom();
 loadTickboxes();
-loadSendFrom();   // 👈 THIS loads the Outlook accounts into the dropdown
-
 </script>
+
 </body>
 </html>
