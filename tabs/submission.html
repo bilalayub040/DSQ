@@ -233,28 +233,21 @@ function addMSISDNSIMRow(planId, msisdnVal = '', simVal = ''){
 
 /* ---------------- Load tickboxes from info.txt ---------------- */
 function loadTickboxes(){
-  fetch('info.txt').then(r=>r.text()).then(txt=>{
-    const blocks = txt.split(/\n(?=\w)/);
-    const tickSubmission=document.getElementById('tickSubmission');
-    const tickDiscount=document.getElementById('tickDiscount');
-    blocks.forEach(b=>{
-      const nameMatch=b.match(/name:\s*(.+)/i);
-      const emailMatch=b.match(/email:\s*(.+)/i);
-      if(nameMatch && emailMatch){
-        const name=nameMatch[1].trim();
-        const email=emailMatch[1].trim();
-        const cb1=document.createElement('label');
-        cb1.innerHTML=`<input type="checkbox" value="${email}" data-name="${name}"> ${name}`;
-        tickSubmission.appendChild(cb1);
-        const cb2=document.createElement('label');
-        cb2.innerHTML=`<input type="checkbox" value="${email}" data-name="${name}"> ${name}`;
-        tickDiscount.appendChild(cb2);
-      }
-    });
+  if(!window.electronAPI || !window.electronAPI.getTickboxEmails) return;
+  const emails = window.electronAPI.getTickboxEmails();
+  const tickSubmission = document.getElementById('tickSubmission');
+  const tickDiscount = document.getElementById('tickDiscount');
+  emails.forEach(e=>{
+    const cb1 = document.createElement('label');
+    cb1.innerHTML = `<input type="checkbox" value="${e.email}" data-name="${e.name}"> ${e.name}`;
+    tickSubmission.appendChild(cb1);
+    const cb2 = document.createElement('label');
+    cb2.innerHTML = `<input type="checkbox" value="${e.email}" data-name="${e.name}"> ${e.name}`;
+    tickDiscount.appendChild(cb2);
   });
 }
 
-/* ---------------- Populate Outlook Emails ---------------- */
+// Populate "Send From" dropdown with Outlook emails
 function loadOutlookEmails(){
   if(!window.electronAPI || !window.electronAPI.getOutlookEmails) return;
   window.electronAPI.getOutlookEmails().then(emails=>{
@@ -265,7 +258,7 @@ function loadOutlookEmails(){
       opt.textContent = email;
       dropdown.appendChild(opt);
     });
-  }).catch(err=>console.error('Error loading Outlook emails:', err));
+  }).catch(err => console.error('Outlook load error:', err));
 }
 
 /* ---------------- Preview ---------------- */
@@ -314,19 +307,26 @@ function previewTable(){
 
 /* ---------------- Submit (Electron integration) ---------------- */
 function submitEmail(){
-  const fromEmail=document.getElementById('sendFrom').value;
+  const fromEmail = document.getElementById('sendFrom').value;
   if(!fromEmail){ alert('Select sender email'); return; }
-  const recipients=[...document.querySelectorAll('#tickSubmission input:checked')].map(i=>i.value);
-  if(recipients.length===0){ alert('Select at least one recipient'); return; }
-  const cc=[...document.querySelectorAll('#tickSubmission input:checked')].map(i=>i.value);
-  const ccInput=document.getElementById('ccEmails').value.split(',').map(e=>e.trim()).filter(Boolean);
-  const finalCC=[...new Set([...cc, ...ccInput, fromEmail])];
 
-  const tableHTML=document.getElementById('preview').innerHTML;
+  const recipients = [...document.querySelectorAll('#tickSubmission input:checked')].map(i=>i.value);
+  if(recipients.length === 0){ alert('Select at least one recipient'); return; }
 
-  window.electronAPI.sendEmail({from: fromEmail, to: recipients, cc: finalCC, subject:'Submission', body:tableHTML})
-    .then(r=>alert(r))
-    .catch(err=>alert('Error sending email: '+err));
+  const ccInput = document.getElementById('ccEmails').value.split(',').map(e=>e.trim()).filter(Boolean);
+  const finalCC = [...new Set([...recipients, ...ccInput, fromEmail])];
+
+  const tableHTML = document.getElementById('preview').innerHTML;
+
+  window.electronAPI.sendEmail({
+    from: fromEmail,
+    to: recipients,
+    cc: finalCC,
+    subject: 'Submission',
+    body: tableHTML
+  })
+  .then(r => alert(r))
+  .catch(err => alert('Error sending email: '+err));
 }
 
 /* ---------------- Init ---------------- */
