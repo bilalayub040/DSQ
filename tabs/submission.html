@@ -318,12 +318,38 @@ function submitEmail(){
   window.electron.sendEmail({from: fromEmail, to: recipients, cc: finalCC, html: tableHTML});
   alert('Email sent (stub)'); // replace with real callback
 }
+/* ---------------- Load Outlook Emails ---------------- */
+async function loadSendFrom(){
+  console.log("loadSendFrom() called");
+  if (window.electronAPI && window.electronAPI.getOutlookEmails) {
+    try {
+      const emails = await window.electronAPI.getOutlookEmails();
+      console.log("Outlook accounts:", emails);
+      const select = document.getElementById('sendFrom');
+      select.innerHTML = '<option value="">Select Email</option>';
+      emails.forEach(e => {
+        const opt = document.createElement('option');
+        opt.value = e;
+        opt.textContent = e;
+        select.appendChild(opt);
+      });
+    } catch(err) {
+      console.error("Failed to load Outlook emails:", err);
+    }
+  } else {
+    console.warn("electronAPI not available");
+  }
+}
+window.onload = loadSendFrom;
+
 
 /* ---------------- Init ---------------- */
 addNewPlan();
 toggleAccountFields();
 toggleMovementFields();
 loadTickboxes();
+loadSendFrom();   // 👈 THIS loads the Outlook accounts into the dropdown
+
 </script>
 </body>
 </html>
