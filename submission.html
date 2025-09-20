@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Submission Mobility</title>
+<style>
+  body { font-family: Arial; margin:8px; font-size:12px; }
+  .form-section { border:1px solid #ccc; padding:4px; margin-bottom:6px; border-radius:4px; }
+  .flex-row { display:flex; gap:6px; flex-wrap:wrap; }
+  .column { flex:1; min-width:240px; }
+  .row { display:flex; align-items:center; margin-bottom:3px; gap:4px; }
+  label { width:95px; font-size:11px; flex-shrink:0; }
+  input, select { flex:1; padding:2px 3px; font-size:11px; height:22px; box-sizing:border-box; }
+  button { padding:3px 6px; margin:0; font-size:11px; cursor:pointer; }
+  table { width:100%; border-collapse:collapse; margin-top:5px; font-size:11px; }
+  th, td { border:1px solid #ccc; padding:2px 4px; text-align:left; }
+
+  /* Plan block and layout */
+  .planBlock { border:1px solid #aaa; padding:6px; margin-bottom:6px; border-radius:4px; }
+  .planHeader { display:flex; flex-direction:column; align-items:flex-start; gap:4px; margin-bottom:4px; }
+  .planHeaderTop { display:flex; justify-content:space-between; width:100%; align-items:center; }
+  .planName { margin:0; font-size:13px; }
+  .planControls { display:flex; gap:6px; }
+
+  .planRow { display:flex; gap:8px; margin-top:4px; align-items:flex-start; flex-wrap:nowrap; }
+  .planRow .col { display:flex; flex-direction:column; }
+  .planRow .col input, .planRow .col select { font-size:11px; padding:2px 3px; height:22px; }
+
+  /* Column widths */
+  .col-plan { flex:1; min-width:100px; }
+  .col-addons { flex:1.5; min-width:130px; }
+  .col-promo { flex:0.8; min-width:80px; }
+  .col-discount { flex:0.8; min-width:80px; }
+
+  /* MSISDN/SIM header */
+  .msisdn-sim-header { display:flex; gap:6px; margin:4px 0 2px 0; font-weight:600; font-size:11px; }
+  .msisdn-title { width:16ch; }
+  .sim-title { width:24ch; }
+
+  /* MSISDN/SIM rows */
+  .msisdn-sim-section { display:flex; flex-direction:column; gap:1px; }
+  .msisdn-sim-row { display:flex; align-items:center; gap:3px; }
+  .msisdnInput { width:16ch; padding:2px 3px; font-size:11px; height:17px; }
+  .simInput { width:24ch; padding:2px 3px; font-size:11px; height:17px; }
+  .msisdn-sim-row .action { display:flex; gap:4px; }
+  .msisdn-sim-row button { padding:2px 5px; font-size:11px; }
+</style>
+</head>
+<body>
+
+<h3>Submission Mobility</h3>
+
+<div class="form-section flex-row">
+  <div class="column">
+    <div class="row">
+      <label>New/Existing:</label>
+      <select id="accountType" onchange="toggleAccountFields()">
+        <option value="new" selected>New</option>
+        <option value="existing">Existing</option>
+      </select>
+    </div>
+
+    <div class="row"><label>Account Name:</label><input type="text" id="accountName"></div>
+
+    <div id="existingFields" class="row" style="display:none;">
+      <label>Account Number:</label><input type="text" id="accountNumber">
+    </div>
+
+    <div id="newFields">
+      <div class="row"><label>CR:</label><input type="text" id="cr"></div>
+      <div class="row"><label>Dynamic ID:</label><input type="text" id="dynamicId"></div>
+      <div class="row"><label>Chooser Name:</label><input type="text" id="chooserName"></div>
+      <div class="row"><label>QID:</label><input type="text" id="qid"></div>
+      <div class="row"><label>Chooser Email:</label><input type="email" id="chooserEmail"></div>
+      <div class="row">
+        <label>Type:</label>
+        <select id="accountTypeExtra">
+          <option value="company">Company Paid</option>
+          <option value="reimbursement">Reimbursement</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row"><label>Agent ID:</label><input type="text" id="agentId"></div>
+  </div>
+
+  <div class="column">
+    <div class="row">
+      <label>Movement Required:</label>
+      <select id="requireMovement" onchange="toggleMovementFields()">
+        <option value="no" selected>No</option>
+        <option value="yes">Yes</option>
+        <option value="notnow">Not Now</option>
+      </select>
+    </div>
+
+    <div id="movementFields" style="display:none;">
+      <div class="row"><label>Parent Agent ID:</label><input type="text" id="parentAgentId"></div>
+      <div class="row"><label>Dynamic ID:</label><input type="text" id="movementDynamicId"></div>
+      <div class="row"><label>Current Revenue:</label><input type="text" id="currentRevenue"></div>
+      <div class="row"><label>CR:</label><input type="text" id="movementCr"></div>
+    </div>
+  </div>
+</div>
+
+<div class="form-section">
+  <h4>Plans</h4>
+  <div style="margin-bottom:6px;">
+    <button onclick="addNewPlan()">Add New Plan</button>
+  </div>
+  <div id="planContainer"></div>
+</div>
+
+<button onclick="previewTable()">Preview Table</button>
+<div id="preview" style="margin-top:8px;"></div>
+
+<script>
+/* ---------------- Conditional fields ---------------- */
+function toggleAccountFields(){
+  const type = document.getElementById('accountType').value;
+  document.getElementById('existingFields').style.display = (type === 'existing') ? 'flex' : 'none';
+  document.getElementById('newFields').style.display = (type === 'new') ? 'block' : 'none';
+}
+function toggleMovementFields(){
+  const val = document.getElementById('requireMovement').value;
+  document.getElementById('movementFields').style.display = (val === 'yes') ? 'block' : 'none';
+}
+
+/* ---------------- Plans & rows ---------------- */
+let planCount = 0;
+
+function addNewPlan(){
+  planCount++;
+  const container = document.getElementById('planContainer');
+
+  const div = document.createElement('div');
+  div.className = 'planBlock';
+  div.id = 'plan' + planCount;
+
+  div.innerHTML = `
+    <div class="planHeader">
+      <div class="planHeaderTop">
+        <h5 class="planName">Plan #${planCount}</h5>
+      </div>
+      <div class="planControls">
+        <button type="button" onclick="resetPlan(${planCount})">Reset Plan</button>
+        <button type="button" onclick="removePlan(${planCount})">Remove Plan</button>
+      </div>
+    </div>
+
+    <div class="planRow">
+      <div class="col col-plan">
+        <label class="compact">Plan</label>
+        <input type="text" class="planInput" placeholder="Plan">
+      </div>
+      <div class="col col-addons">
+        <label class="compact">Addons</label>
+        <input type="text" class="addonInput" placeholder="Addons">
+      </div>
+      <div class="col col-promo">
+        <label class="compact">Promo</label>
+        <input type="text" class="promoInput" placeholder="Promo">
+      </div>
+      <div class="col col-discount">
+        <label class="compact">Discount</label>
+        <select class="discountInput">
+		<option>No discount</option>
+          <option>5%</option><option>10%</option><option>15%</option><option>20%</option>
+          <option>5%ontop</option><option>10%ontop</option><option>15%ontop</option><option>20%ontop</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Titles for MSISDN & SIM (one per plan) -->
+    <div class="msisdn-sim-header" id="ms-header-${planCount}">
+      <div class="msisdn-title">MSISDNs</div>
+      <div class="sim-title">Sim serials</div>
+    </div>
+
+    <div class="msisdn-sim-section" id="ms-section-${planCount}"></div>
+  `;
+
+  container.appendChild(div);
+
+  // create first input row (no per-row labels)
+  addMSISDNSIMRow(planCount);
+}
+
+function resetPlan(planId){
+  const planBlock = document.getElementById('plan' + planId);
+  if(!planBlock) return;
+  ['.planInput', '.addonInput', '.promoInput'].forEach(sel=>{
+    const el = planBlock.querySelector(sel);
+    if(el) el.value = '';
+  });
+  const disc = planBlock.querySelector('.discountInput');
+  if(disc) disc.selectedIndex = 0;
+
+  const section = planBlock.querySelector('.msisdn-sim-section');
+  if(section){
+    section.innerHTML = ''; // clear rows
+    addMSISDNSIMRow(planId); // add first empty row
+  }
+}
+
+function removePlan(planId){
+  const p = document.getElementById('plan' + planId);
+  if(p) p.remove();
+}
+
+/* add one msisdn-sim input row (no titles here) */
+function addMSISDNSIMRow(planId, msisdnVal = '', simVal = ''){
+  const planBlock = document.getElementById('plan' + planId);
+  if(!planBlock) return;
+  const section = planBlock.querySelector('.msisdn-sim-section');
+
+  const rowDiv = document.createElement('div');
+  rowDiv.className = 'msisdn-sim-row';
+
+  rowDiv.innerHTML = `
+    <div class="cell"><input type="text" class="msisdnInput" placeholder="MSISDN" value="${msisdnVal}"></div>
+    <div class="cell"><input type="text" class="simInput" placeholder="SIM Serial" value="${simVal}"></div>
+    <div class="action">
+      <button type="button" class="add-row">+</button>
+      <button type="button" class="del-row">-</button>
+    </div>
+  `;
+
+  section.appendChild(rowDiv);
+
+  const msInput = rowDiv.querySelector('.msisdnInput');
+  const simInput = rowDiv.querySelector('.simInput');
+  const addBtn = rowDiv.querySelector('.add-row');
+  const delBtn = rowDiv.querySelector('.del-row');
+
+  // Enter behavior: stay in same column and go to next row (or create)
+  msInput.addEventListener('keydown', e=>{
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      const next = rowDiv.nextElementSibling;
+      if(next) { next.querySelector('.msisdnInput').focus(); }
+      else { addMSISDNSIMRow(planId); section.lastChild.querySelector('.msisdnInput').focus(); }
+    }
+  });
+  simInput.addEventListener('keydown', e=>{
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      const next = rowDiv.nextElementSibling;
+      if(next) { next.querySelector('.simInput').focus(); }
+      else { addMSISDNSIMRow(planId); section.lastChild.querySelector('.simInput').focus(); }
+    }
+  });
+
+  // Paste logic (fills existing rows first)
+  msInput.addEventListener('paste', e => handlePasteRow(e, true, rowDiv, planId));
+  simInput.addEventListener('paste', e => handlePasteRow(e, false, rowDiv, planId));
+
+  addBtn.addEventListener('click', () => addMSISDNSIMRow(planId));
+  delBtn.addEventListener('click', () => {
+    const rows = Array.from(section.querySelectorAll('.msisdn-sim-row'));
+    if(rows.length > 1) rowDiv.remove();
+    else { // keep at least one row: clear instead of removing
+      rowDiv.querySelector('.msisdnInput').value = '';
+      rowDiv.querySelector('.simInput').value = '';
+    }
+  });
+}
+
+/* Paste handler that fills existing rows first, then appends */
+function handlePasteRow(e, isMsisdn, rowDiv, planId){
+  e.preventDefault();
+  const pasted = (e.clipboardData || window.clipboardData).getData('text') || '';
+  let raw = pasted.replace(/\D/g, '');
+
+  let blockLength;
+  if(isMsisdn){
+    if(raw.startsWith('974290')) blockLength = 13;
+    else if(!raw.startsWith('974') && raw.startsWith('290')) blockLength = 10;
+    else if(raw.startsWith('974')) blockLength = 11;
+    else blockLength = 8;
+  } else {
+    blockLength = 19; // per your request
+  }
+
+  const chunks = raw.match(new RegExp('.{1,' + blockLength + '}', 'g')) || [];
+  const planBlock = document.getElementById('plan' + planId);
+  if(!planBlock) return;
+  const section = planBlock.querySelector('.msisdn-sim-section');
+  if(!section) return;
+
+  let allRows = Array.from(section.querySelectorAll('.msisdn-sim-row'));
+  let startIndex = allRows.indexOf(rowDiv);
+  if(startIndex < 0) startIndex = allRows.length; // append if not found
+
+  chunks.forEach((val, i) => {
+    const idx = startIndex + i;
+    if(idx < allRows.length){
+      const target = allRows[idx];
+      if(isMsisdn) target.querySelector('.msisdnInput').value = val;
+      else target.querySelector('.simInput').value = val;
+    } else {
+      // add new row(s) until idx exists
+      addMSISDNSIMRow(planId, (isMsisdn ? val : ''), (isMsisdn ? '' : val));
+      allRows = Array.from(section.querySelectorAll('.msisdn-sim-row'));
+    }
+  });
+}
+
+/* Gather & preview */
+function previewTable(){
+  const A = (document.getElementById('accountName') && document.getElementById('accountName').value) || '';
+  const B1 = (document.getElementById('accountNumber') && document.getElementById('accountNumber').value) || '';
+  const C = (document.getElementById('agentId') && document.getElementById('agentId').value) || '';
+
+  const plans = [];
+  document.querySelectorAll('.planBlock').forEach(pr => {
+    const plan = (pr.querySelector('.planInput') && pr.querySelector('.planInput').value) || '';
+    const addon = (pr.querySelector('.addonInput') && pr.querySelector('.addonInput').value) || '';
+    const promo = (pr.querySelector('.promoInput') && pr.querySelector('.promoInput').value) || '';
+    const discount = (pr.querySelector('.discountInput') && pr.querySelector('.discountInput').value) || '';
+    const msisdns = [...pr.querySelectorAll('.msisdnInput')].map(i => i.value).filter(Boolean);
+    const simserials = [...pr.querySelectorAll('.simInput')].map(i => i.value).filter(Boolean);
+
+    plans.push({ plan, addon, promo, discount, msisdns, simserials });
+  });
+
+  let table = `<table>
+    <tr><th>Account Number</th><th>Account Name</th><th>Agent ID</th></tr>
+    <tr><td>${escapeHtml(B1)}</td><td>${escapeHtml(A)}</td><td>${escapeHtml(C)}</td></tr>
+    <tr><th>MSISDN(s)</th><th>Sim serial(s)</th><th>Plan(s)</th><th>Addon(s)</th><th>Promo</th><th>Discount</th><th>Spend Limit</th></tr>`;
+
+  plans.forEach(p => {
+    const rows = Math.max(p.msisdns.length, p.simserials.length, 1);
+    for(let i = 0; i < rows; i++){
+      table += `<tr>
+        <td>${escapeHtml(p.msisdns[i] || '')}</td>
+        <td>${escapeHtml(p.simserials[i] || '')}</td>
+        <td>${escapeHtml(p.plan || '')}</td>
+        <td>${escapeHtml(p.addon || '')}</td>
+        <td>${escapeHtml(p.promo || '')}</td>
+        <td>${escapeHtml(p.discount || '')}</td>
+        <td>0.01</td>
+      </tr>`;
+    }
+  });
+
+  table += `</table>`;
+  document.getElementById('preview').innerHTML = table;
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* --- init --- */
+addNewPlan();
+toggleAccountFields();
+toggleMovementFields();
+</script>
+</body>
+</html>
