@@ -1,4 +1,9 @@
-a{
-name: Bilal
-Email:Fixed.support@dsq.qa;
+key1{
+  name: John Doe
+  email: john.doe@example.com;
+}
+
+key2{
+  name: Jane Smith
+  email: jane.smith@example.com;
 }
