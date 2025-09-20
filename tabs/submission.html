@@ -16,7 +16,6 @@
   table { width:100%; border-collapse:collapse; margin-top:5px; font-size:11px; }
   th, td { border:1px solid #ccc; padding:2px 4px; text-align:left; }
 
-  /* Plan block and layout */
   .planBlock { border:1px solid #aaa; padding:6px; margin-bottom:6px; border-radius:4px; }
   .planHeader { display:flex; flex-direction:column; align-items:flex-start; gap:4px; margin-bottom:4px; }
   .planHeaderTop { display:flex; justify-content:space-between; width:100%; align-items:center; }
@@ -27,12 +26,10 @@
   .planRow .col { display:flex; flex-direction:column; }
   .planRow .col input, .planRow .col select { font-size:11px; padding:2px 3px; height:22px; }
 
-  /* MSISDN/SIM header */
   .msisdn-sim-header { display:flex; gap:6px; margin:4px 0 2px 0; font-weight:600; font-size:11px; }
   .msisdn-title { width:16ch; }
   .sim-title { width:24ch; }
 
-  /* MSISDN/SIM rows */
   .msisdn-sim-section { display:flex; flex-direction:column; gap:1px; }
   .msisdn-sim-row { display:flex; align-items:center; gap:3px; }
   .msisdnInput { width:16ch; padding:2px 3px; font-size:11px; height:17px; }
@@ -257,6 +254,20 @@ function loadTickboxes(){
   });
 }
 
+/* ---------------- Populate Outlook Emails ---------------- */
+function loadOutlookEmails(){
+  if(!window.electronAPI || !window.electronAPI.getOutlookEmails) return;
+  window.electronAPI.getOutlookEmails().then(emails=>{
+    const dropdown = document.getElementById('sendFrom');
+    emails.forEach(email=>{
+      const opt = document.createElement('option');
+      opt.value = email;
+      opt.textContent = email;
+      dropdown.appendChild(opt);
+    });
+  }).catch(err=>console.error('Error loading Outlook emails:', err));
+}
+
 /* ---------------- Preview ---------------- */
 function previewTable(){
   const A = document.getElementById('accountName').value||'';
@@ -275,7 +286,6 @@ function previewTable(){
     plans.push({ plan, addon, promo, discount, msisdns, simserials });
   });
 
-  // Selected tickboxes for names
   const selectedNames=[...document.querySelectorAll('#tickSubmission input:checked')].map(i=>i.dataset.name);
   let table = `<div>Hi ${selectedNames.join(', ')},<br><br>
   please action the below request;<br><br>
@@ -314,9 +324,9 @@ function submitEmail(){
 
   const tableHTML=document.getElementById('preview').innerHTML;
 
-  // Example: send via Electron + nodemailer
-  window.electron.sendEmail({from: fromEmail, to: recipients, cc: finalCC, html: tableHTML});
-  alert('Email sent (stub)'); // replace with real callback
+  window.electronAPI.sendEmail({from: fromEmail, to: recipients, cc: finalCC, subject:'Submission', body:tableHTML})
+    .then(r=>alert(r))
+    .catch(err=>alert('Error sending email: '+err));
 }
 
 /* ---------------- Init ---------------- */
@@ -324,6 +334,7 @@ addNewPlan();
 toggleAccountFields();
 toggleMovementFields();
 loadTickboxes();
+loadOutlookEmails();
 </script>
 </body>
 </html>
