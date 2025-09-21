@@ -1,95 +1,50 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>Desktop App - Full Screen Tabs</title>
-<style>
-html, body {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    width: 100%;
-    font-family: Arial, sans-serif;
-    overflow: hidden;
-}
-
-.tabs {
-    display: flex;
-    width: 100%;
-    height: 50px;
-    background: #f0f0f0;
-    border-bottom: 1px solid #ccc;
-}
-
-.tab {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-weight: bold;
-    border-right: 1px solid #ccc;
-    transition: background 0.2s;
-}
-
-.tab:last-child {
-    border-right: none;
-}
-
-.tab.active {
-    background: white;
-    color: #000;
-}
-
-.tab:hover {
-    background: #e0e0e0;
-}
-
-.tab-content {
-    width: 100%;
-    height: calc(100% - 50px); /* subtract tabs height */
-    border: none;
-    display: none;
-}
-
-.tab-content.active {
-    display: block;
-}
-</style>
+  <title>Launcher App B</title>
 </head>
 <body>
+  <h2>Launcher App B</h2>
+  <button id="submissionsBtn">Submissions</button>
+  <div id="status">Status: Waiting...</div>
 
-<div class="tabs">
-    <div class="tab active" onclick="openTab('submission')">Submission</div>
-    <div class="tab" onclick="openTab('modification')">Modification</div>
-    <div class="tab" onclick="openTab('discount')">Discount</div>
-    <div class="tab" onclick="openTab('aps')">APS</div>
-</div>
+  <script>
+    const PY_URL = "https://your-server.com/DSQ.py";
 
-<!-- Iframes for each tab -->
-<iframe id="submission" class="tab-content active" src="tabs/submission.html"></iframe>
-<iframe id="modification" class="tab-content" src="tabs/modification.html"></iframe>
-<iframe id="discount" class="tab-content" src="tabs/discount.html"></iframe>
-<iframe id="aps" class="tab-content" src="tabs/aps.html"></iframe>
+    document.getElementById('submissionsBtn').addEventListener('click', async () => {
+      document.getElementById('status').innerText = 'Downloading Python app C...';
+      
+      try {
+        const response = await fetch(PY_URL);
+        const blob = await response.blob();
+        const file = new File([blob], 'DSQ.py', { type: 'text/plain' });
 
-<script>
-function openTab(tabId) {
-    // Remove active class from all tabs
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    // Hide all iframes
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        // For Electron, we can use nodeIntegration to save & run
+        if (window.nodeRequire) {
+          const fs = window.nodeRequire('fs');
+          const path = window.nodeRequire('path');
+          const { spawn } = window.nodeRequire('child_process');
 
-    // Set clicked tab active
-    const tabIndex = Array.from(document.querySelectorAll('.tab')).findIndex(t => t.getAttribute('onclick').includes(tabId));
-    document.querySelectorAll('.tab')[tabIndex].classList.add('active');
+          const localPath = path.join(process.cwd(), 'DSQ.py');
+          const reader = new FileReader();
+          reader.onload = function() {
+            fs.writeFileSync(localPath, Buffer.from(reader.result));
+            
+            // Run Python
+            const pyProcess = spawn('python', [localPath], { stdio: 'inherit' });
+            pyProcess.on('close', code => {
+              document.getElementById('status').innerText = `Python exited with code ${code}`;
+            });
+          };
+          reader.readAsArrayBuffer(file);
+        } else {
+          alert('Python execution requires Electron with nodeIntegration enabled.');
+        }
 
-    // Show corresponding iframe
-    document.getElementById(tabId).classList.add('active');
-}
-
-// Ensure first tab is shown on load
-openTab('submission');
-</script>
-
+      } catch (err) {
+        document.getElementById('status').innerText = 'Error: ' + err.message;
+      }
+    });
+  </script>
 </body>
 </html>
