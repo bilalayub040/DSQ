@@ -1,53 +1,37 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Launcher App B</title>
+<meta charset="UTF-8">
+<title>Electron Launcher</title>
+<style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    button { padding: 10px 20px; margin: 10px 0; font-size: 16px; cursor: pointer; }
+</style>
 </head>
 <body>
-  <h2>Launcher App B</h2>
-  <button id="submissionsBtn">Submissions</button>
-  <div id="status">Status: Waiting...</div>
 
-  <script>
-    const PY_URL = "http://regal-starship-bed012.netlify.app/DSQ.py";
+<h2>Launcher App</h2>
 
-    document.getElementById('submissionsBtn').addEventListener('click', async () => {
-      document.getElementById('status').innerText = 'Downloading Python app C...';
-      
-      try {
-        const response = await fetch(PY_URL);
-        const blob = await response.blob();
-        const file = new File([blob], 'DSQ.py', { type: 'text/plain' });
+<!-- Example buttons -->
+<button id="submissionBtn">Run Submission</button>
+<button id="modificationBtn">Run Modification</button>
+<button id="discountBtn">Run Discount</button>
 
-        // For Electron, we can use nodeIntegration to save & run
-        if (window.nodeRequire) {
-          const fs = window.nodeRequire('fs');
-          const path = window.nodeRequire('path');
-          const { spawn } = window.nodeRequire('child_process');
+<script>
+    const { ipcRenderer } = require('electron');
 
-          const localPath = path.join(process.cwd(), 'DSQ.py');
-          const reader = new FileReader();
-          reader.onload = function() {
-            fs.writeFileSync(localPath, Buffer.from(reader.result));
-            
-            // Run Python
-            const pyProcess = spawn('python', [localPath], { stdio: 'inherit' });
-            pyProcess.on('close', code => {
-              document.getElementById('status').innerText = `Python exited with code ${code}`;
-            });
-          };
-          reader.readAsArrayBuffer(file);
-        } else {
-          alert('Python execution requires Electron with nodeIntegration enabled.');
-        }
-
-      } catch (err) {
-        document.getElementById('status').innerText = 'Error: ' + err.message;
-      }
+    document.getElementById('submissionBtn').addEventListener('click', () => {
+        ipcRenderer.send('run-python', 'https://your-netlify-site.netlify.app/DSQ.py');
     });
-  </script>
+
+    document.getElementById('modificationBtn').addEventListener('click', () => {
+        ipcRenderer.send('run-python', 'https://your-netlify-site.netlify.app/Modification.py');
+    });
+
+    document.getElementById('discountBtn').addEventListener('click', () => {
+        ipcRenderer.send('run-python', 'https://your-netlify-site.netlify.app/Discount.py');
+    });
+</script>
+
 </body>
 </html>
-
-
-
