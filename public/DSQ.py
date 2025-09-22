@@ -1,7 +1,8 @@
-import sys, re, os
+import sys, re, os 
 import win32com.client  # for Outlook desktop
 import requests
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSize
+from datetime import datetime  # Add at the top of the file
 from PyQt5.QtGui import QFont, QColor, QBrush
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
@@ -133,6 +134,7 @@ class PlanWidget(QGroupBox):
             self.simserials.setPlainText(newtxt)
             self.simserials.blockSignals(False)
 
+
 # ----------------- SubmissionTab -----------------
 class SubmissionTab(QWidget):
     def __init__(self):
@@ -144,9 +146,18 @@ class SubmissionTab(QWidget):
         self.update_preview()
 
     def initUI(self):
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(8, 8, 8, 8)
-        outer.setSpacing(10)
+        # --- SCROLLABLE OUTER AREA ---
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        outer_container = QWidget()
+        scroll.setWidget(outer_container)
+
+        self.outer_layout = QVBoxLayout(outer_container)
+        self.outer_layout.setSpacing(10)
+        self.outer_layout.setContentsMargins(8,8,8,8)
+
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(scroll)
 
         # --- TOP USER SELECTION ---
         top_user_row = QHBoxLayout()
@@ -158,18 +169,12 @@ class SubmissionTab(QWidget):
         top_user_row.addWidget(self.user_combo)
         top_user_row.addWidget(self.user_display)
         top_user_row.addStretch()
-        outer.addLayout(top_user_row)
+        self.outer_layout.addLayout(top_user_row)
 
         self.populate_outlook_users()
         self.user_combo.currentTextChanged.connect(self.update_user_display)
 
-        # --- CONTENT WIDGET ---
-        self.content_widget = QWidget()
-        self.content_layout = QVBoxLayout(self.content_widget)
-        self.content_layout.setSpacing(10)
-        outer.addWidget(self.content_widget)
-
-        # LEFT / RIGHT columns
+        # --- LEFT / RIGHT columns ---
         top_row = QHBoxLayout()
         self.LEFT_WIDTH = 360
         self.left_column = QVBoxLayout()
@@ -192,7 +197,7 @@ class SubmissionTab(QWidget):
         top_row.addWidget(right_container)
 
         top_row.addStretch()
-        self.content_layout.addLayout(top_row)
+        self.outer_layout.addLayout(top_row)
 
         # --- PLAN SECTION ---
         self.add_plan_btn = QPushButton("Add Plan")
@@ -203,7 +208,7 @@ class SubmissionTab(QWidget):
         plans_header.addWidget(QLabel("Plan section"))
         plans_header.addStretch()
         plans_header.addWidget(self.add_plan_btn)
-        self.content_layout.addLayout(plans_header)
+        self.outer_layout.addLayout(plans_header)
 
         self.plans_area = QScrollArea()
         self.plans_area.setWidgetResizable(True)
@@ -213,69 +218,75 @@ class SubmissionTab(QWidget):
         self.plans_layout.setSpacing(10)
         self.plans_holder.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.plans_area.setWidget(self.plans_holder)
-        self.content_layout.addWidget(self.plans_area)
+        self.plans_area.setFixedHeight(300)  # visible height
+        self.outer_layout.addWidget(self.plans_area)
 
-        # --- EMAIL SECTION ---
-        email_layout = QVBoxLayout()
+        # --- EMAIL & ATTACHMENTS SECTION ---
+        email_attach_container = QHBoxLayout()
+        email_attach_container.setSpacing(10)
 
-        # TO row
-        to_row = QHBoxLayout()
-        to_row.addWidget(QLabel("Submit to:"))
-        self.to_input = QComboBox(); self.to_input.setFixedWidth(220)
-        to_row.addWidget(self.to_input)
-        to_row.addStretch()
-        email_layout.addLayout(to_row)
+        # ----- Left: Email Inputs -----
+        email_inputs_layout = QVBoxLayout()
+        email_inputs_layout.setSpacing(5)
+        for lbl, widget_type in [("Submit to:", QComboBox), ("CC:", QComboBox), ("Others:", QLineEdit)]:
+            row = QHBoxLayout()
+            row.addWidget(QLabel(lbl), 0, Qt.AlignRight)
+            w = widget_type()
+            w.setFixedWidth(220)
+            if lbl=="Submit to:": self.to_input = w
+            elif lbl=="CC:": self.cc_input = w
+            else: self.others_input = w
+            row.addWidget(w)
+            email_inputs_layout.addLayout(row)
+        email_inputs_layout.addStretch()
+        email_attach_container.addLayout(email_inputs_layout, 0)
 
-        # CC row
-        cc_row = QHBoxLayout()
-        cc_row.addWidget(QLabel("CC:"))
-        self.cc_input = QComboBox(); self.cc_input.setFixedWidth(220)
-        cc_row.addWidget(self.cc_input)
-        cc_row.addStretch()
-        email_layout.addLayout(cc_row)
-
-        # Others row
-        others_row = QHBoxLayout()
-        others_row.addWidget(QLabel("Others:"))
-        self.others_input = QLineEdit(); self.others_input.setFixedWidth(400)
-        others_row.addWidget(self.others_input)
-        others_row.addStretch()
-        email_layout.addLayout(others_row)
-
-        # Attachments row
-        attach_row = QHBoxLayout()
+        # ----- Right: Attachments -----
+        attach_container = QVBoxLayout()
+        attach_container.setSpacing(5)
+        attach_btn_row = QHBoxLayout()
         self.attach_btn = QPushButton("Add Attachments"); self.attach_btn.setFixedHeight(28)
         self.attach_btn.clicked.connect(self.select_attachments)
         self.clear_btn = QPushButton("Clear Attachments"); self.clear_btn.setFixedHeight(28)
         self.clear_btn.clicked.connect(self.clear_attachments)
-        attach_row.addWidget(self.attach_btn)
-        attach_row.addWidget(self.clear_btn)
-        attach_row.addStretch()
-        email_layout.addLayout(attach_row)
+        attach_btn_row.addWidget(self.attach_btn)
+        attach_btn_row.addWidget(self.clear_btn)
+        attach_container.addLayout(attach_btn_row)
 
-        # Attachments container
         self.attachments_list = QListWidget()
-        self.attachments_list.setFixedHeight(60)
+        self.attachments_list.setViewMode(QListWidget.IconMode)
+        self.attachments_list.setIconSize(QSize(64,64))
+        self.attachments_list.setResizeMode(QListWidget.Adjust)
+        self.attachments_list.setSpacing(8)
+        self.attachments_list.setMinimumHeight(60)
         self.attachments_list.itemDoubleClicked.connect(self.remove_attachment_item)
-        email_layout.addWidget(self.attachments_list)
-
-        self.content_layout.addLayout(email_layout)
+        attach_container.addWidget(self.attachments_list)
+        email_attach_container.addLayout(attach_container, 1)
+        self.outer_layout.addLayout(email_attach_container)
 
         self.load_email_lists()
 
         # --- GREETING LABEL ---
         self.greeting_lbl = QLabel("Hi team,\n\nPlease action the below:")
-        self.content_layout.addWidget(self.greeting_lbl)
-
+        self.outer_layout.addWidget(self.greeting_lbl)
+        self.preview_btn = QPushButton("Preview")
+        self.preview_btn.clicked.connect(self.update_preview)
+        main_layout.addWidget(self.preview_btn)
         # --- PREVIEW TABLE ---
+        self.preview_area = QScrollArea()
+        self.preview_area.setWidgetResizable(True)  # allows inner widget to expand vertically
         self.preview_table = QTableWidget()
         self.preview_table.setColumnCount(7)
-        self.preview_table.setHorizontalHeaderLabels([
-            "Account Number", "Account Name", "Agent ID",
-            "Msisdns", "Simserials", "Plan/Addon/Promo/Disc", "Spendlimit"
-        ])
+        self.preview_table.setHorizontalHeaderLabels(["Account Number", "Account Name", "Plan","Addons"])
+        self.preview_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # fixed width
+        self.preview_table.setFixedHeight(300)  # your fixed width
+        container = QWidget()
+        container_layout = QVBoxLayout(container)
+        container_layout.addWidget(self.preview_table)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        self.preview_area.setWidget(container)
         self.preview_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.content_layout.addWidget(self.preview_table)
+        self.outer_layout.addWidget(self.preview_table)
 
         # --- SUBMIT BUTTON ROW ---
         submit_row = QHBoxLayout()
@@ -285,7 +296,7 @@ class SubmissionTab(QWidget):
         self.status_lbl = QLabel("Ready")
         submit_row.addWidget(self.status_lbl)
         submit_row.addStretch()
-        self.content_layout.addLayout(submit_row)
+        self.outer_layout.addLayout(submit_row)
 
         # Connect visibility logic
         self.left_widgets["New/Existing"].findChild(QComboBox).currentTextChanged.connect(self.update_left_visibility)
@@ -424,9 +435,7 @@ class SubmissionTab(QWidget):
         acc_name = self._get_left_input_text("Account Name")
         agent_id = self._get_left_input_text("Agent ID")
         self.preview_table.resizeRowsToContents()
-        # Bold font and yellow background
-        bold_font = QFont()
-        bold_font.setBold(True)
+        bold_font = QFont(); bold_font.setBold(True)
         yellow_brush = QBrush(QColor("yellow"))
         black_brush = QBrush(QColor("black"))
 
@@ -439,15 +448,10 @@ class SubmissionTab(QWidget):
             item.setForeground(black_brush)
             self.preview_table.setItem(0, col, item)
 
-        # Row 1: account values
         self.preview_table.setItem(1, 0, QTableWidgetItem(acc_num))
         self.preview_table.setItem(1, 1, QTableWidgetItem(acc_name))
         self.preview_table.setItem(1, 2, QTableWidgetItem(agent_id))
-        self.preview_table.setRowHeight(0, 3)
-        self.preview_table.setRowHeight(1, 3)
-        self.preview_table.setRowHeight(2, 3)
 
-        # Row 2: plan headers
         headers = ["Msisdns", "Simserials", "Plan", "Addon", "Promo", "Discount", "Spendlimit"]
         for c, h in enumerate(headers):
             item = QTableWidgetItem(h)
@@ -456,7 +460,6 @@ class SubmissionTab(QWidget):
             item.setForeground(black_brush)
             self.preview_table.setItem(2, c, item)
 
-        # Rows 3+: plan data
         row_idx = 3
         for plan in self.plan_widgets:
             ms_list = [s for s in plan.msisdns.toPlainText().splitlines() if s.strip()]
@@ -471,12 +474,13 @@ class SubmissionTab(QWidget):
                 self.preview_table.setItem(row_idx, 4, QTableWidgetItem(plan.promo.text()))
                 self.preview_table.setItem(row_idx, 5, QTableWidgetItem(plan.discount.currentText()))
                 self.preview_table.setItem(row_idx, 6, QTableWidgetItem("0.01"))
-                self.preview_table.setRowHeight(row_idx, 3)
+                self.preview_table.setRowHeight(row_idx, 20)
                 row_idx += 1
 
         self.preview_table.resizeColumnsToContents()
 
     # ----------------- SEND EMAIL -----------------
+
     def send_email(self):
         self.update_preview()
         to_email = self.to_input.currentText().strip()
@@ -491,14 +495,36 @@ class SubmissionTab(QWidget):
 
         all_to = [to_email] + others_emails
 
-        html = "<p>Hi team,<br><br>Please action the below:</p><table border='1' cellspacing='0' cellpadding='3'>"
+        # --- Generate Subject ---
+        account_name = self._get_left_input_text("Account Name") or "Unknown Account"
+        today_str = datetime.today().strftime("%Y-%m-%d")
+        subject_line = f"{account_name} - Mobility Submission - {today_str}"
+
+        # --- Generate HTML with formatting ---
+        html = "<p>Hi team,<br><br>Please action the below:</p>"
+        html += "<table border='1' cellspacing='0' cellpadding='4' style='border-collapse: collapse;'>"
+
         for r in range(self.preview_table.rowCount()):
             html += "<tr>"
             for c in range(self.preview_table.columnCount()):
                 item = self.preview_table.item(r, c)
                 txt = item.text() if item else ""
-                html += f"<td>{txt}</td>"
+                style = ""
+
+                if item:
+                    # Bold text
+                    if item.font().bold():
+                        style += "font-weight:bold;"
+                    # Background color
+                    bg = item.background().color()
+                    style += f"background-color: rgb({bg.red()},{bg.green()},{bg.blue()});"
+                    # Optional: text color
+                    fg = item.foreground().color()
+                    style += f"color: rgb({fg.red()},{fg.green()},{fg.blue()});"
+
+                html += f"<td style='{style}'>{txt}</td>"
             html += "</tr>"
+
         html += "</table>"
 
         try:
@@ -510,11 +536,13 @@ class SubmissionTab(QWidget):
                 mail = outlook.CreateItem(0)
                 mail.To = to.strip()
                 mail.CC = cc_email
-                mail.Subject = "Submission Preview"
+                mail.Subject = subject_line
                 mail.HTMLBody = html
                 for f in self.attachments:
-                    try: mail.Attachments.Add(f)
-                    except: pass
+                    try:
+                        mail.Attachments.Add(f)
+                    except:
+                        pass
                 mail.Send()
             self.status_lbl.setText("Sent successfully ✓")
         except Exception as ex:
@@ -541,4 +569,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
