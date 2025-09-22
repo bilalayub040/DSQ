@@ -1,6 +1,9 @@
 import sys, re, os
 import win32com.client  # for Outlook desktop
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont, QColor, QBrush
+
+from PyQt5.QtWidgets import QTableWidgetItem
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QComboBox, QPushButton, QTextEdit, QGroupBox,
@@ -138,7 +141,7 @@ class SubmissionTab(QWidget):
         self.attachments = []
         self.logged_in_users = []
         self.initUI()
-
+        self.update_preview()
     def initUI(self):
         outer = QVBoxLayout(self)
         outer.setContentsMargins(8, 8, 8, 8)
@@ -210,7 +213,7 @@ class SubmissionTab(QWidget):
         self.plans_holder.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.plans_area.setWidget(self.plans_holder)
         self.content_layout.addWidget(self.plans_area)
-
+        
         # --- EMAIL SECTION ---
         email_row = QHBoxLayout()
         email_row.addWidget(QLabel("Submit to:"))
@@ -368,24 +371,49 @@ class SubmissionTab(QWidget):
         return le.text() if le else ""
 
     # ----------------- PREVIEW / SEND -----------------
+
     def update_preview(self):
+        
         self.preview_table.setRowCount(0)
+        self.preview_table.horizontalHeader().setVisible(False)
+        self.preview_table.verticalHeader().setVisible(False)
         acc_num = self._get_left_input_text("Account Number")
         acc_name = self._get_left_input_text("Account Name")
         agent_id = self._get_left_input_text("Agent ID")
+        self.preview_table.resizeRowsToContents()
+        # Bold font and yellow background
+        bold_font = QFont()
+        bold_font.setBold(True)
+        yellow_brush = QBrush(QColor("yellow"))
+        black_brush = QBrush(QColor("black"))
 
+        # Row 0: titles
         self.preview_table.setRowCount(3)
-        self.preview_table.setItem(0, 0, QTableWidgetItem("Account Number"))
-        self.preview_table.setItem(0, 1, QTableWidgetItem("Account Name"))
-        self.preview_table.setItem(0, 2, QTableWidgetItem("Agent ID"))
+        for col, text in enumerate(["Account Number", "Account Name", "Agent ID"]):
+            item = QTableWidgetItem(text)
+            item.setFont(bold_font)
+            item.setBackground(yellow_brush)
+            item.setForeground(black_brush)
+            self.preview_table.setItem(0, col, item)
+
+        # Row 1: account values
         self.preview_table.setItem(1, 0, QTableWidgetItem(acc_num))
         self.preview_table.setItem(1, 1, QTableWidgetItem(acc_name))
         self.preview_table.setItem(1, 2, QTableWidgetItem(agent_id))
+        self.preview_table.setRowHeight(0, 3)
+        self.preview_table.setRowHeight(1, 3)
+        self.preview_table.setRowHeight(2, 3)
 
+        # Row 2: plan headers
         headers = ["Msisdns", "Simserials", "Plan", "Addon", "Promo", "Discount", "Spendlimit"]
         for c, h in enumerate(headers):
-            self.preview_table.setItem(2, c, QTableWidgetItem(h))
+            item = QTableWidgetItem(h)
+            item.setFont(bold_font)
+            item.setBackground(yellow_brush)
+            item.setForeground(black_brush)
+            self.preview_table.setItem(2, c, item)
 
+        # Rows 3+: plan data
         row_idx = 3
         for plan in self.plan_widgets:
             ms_list = [s for s in plan.msisdns.toPlainText().splitlines() if s.strip()]
@@ -400,9 +428,12 @@ class SubmissionTab(QWidget):
                 self.preview_table.setItem(row_idx, 4, QTableWidgetItem(plan.promo.text()))
                 self.preview_table.setItem(row_idx, 5, QTableWidgetItem(plan.discount.currentText()))
                 self.preview_table.setItem(row_idx, 6, QTableWidgetItem("0.01"))
+                self.preview_table.setRowHeight(row_idx, 3)
                 row_idx += 1
 
         self.preview_table.resizeColumnsToContents()
+
+
 
     def send_email(self):
         self.update_preview()
