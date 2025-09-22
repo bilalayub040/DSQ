@@ -1,4 +1,5 @@
 import sys, re
+import win32com.client  # <-- for sending via Outlook desktop
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
@@ -6,18 +7,17 @@ from PyQt5.QtWidgets import (
     QScrollArea, QTableWidget, QTableWidgetItem
 )
 
+# ----------------- PlanWidget (same as before) -----------------
 class PlanWidget(QGroupBox):
     def __init__(self, remove_callback):
         super().__init__("Plan Section")
         self.remove_callback = remove_callback
         self.initUI()
-
     def initUI(self):
         layout = QVBoxLayout()
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(5)
 
-        # Top row: Reset + Remove buttons
         top_row = QHBoxLayout()
         self.reset_btn = QPushButton("Reset")
         self.remove_btn = QPushButton("Remove")
@@ -30,7 +30,6 @@ class PlanWidget(QGroupBox):
         top_row.addStretch()
         layout.addLayout(top_row)
 
-        # Plan / Addons / Promo / Discount row
         row1 = QHBoxLayout()
         self.plan = QLineEdit(); self.plan.setFixedHeight(30); self.plan.setFixedWidth(150)
         self.addons = QLineEdit(); self.addons.setFixedHeight(30); self.addons.setFixedWidth(150)
@@ -44,7 +43,6 @@ class PlanWidget(QGroupBox):
             row1.addWidget(widget)
         layout.addLayout(row1)
 
-        # Msisdns | Simserial row
         row2 = QHBoxLayout()
         lbl_ms = QLabel("Msisdns"); lbl_ms.setAlignment(Qt.AlignTop)
         lbl_sim = QLabel("Simserials"); lbl_sim.setAlignment(Qt.AlignTop)
@@ -61,34 +59,22 @@ class PlanWidget(QGroupBox):
         self.setLayout(layout)
 
     def reset_fields(self):
-        self.plan.clear()
-        self.addons.clear()
-        self.promo.clear()
-        self.msisdns.clear()
-        self.simserials.clear()
+        self.plan.clear(); self.addons.clear(); self.promo.clear()
+        self.msisdns.clear(); self.simserials.clear()
         self.discount.setCurrentIndex(0)
-
     def remove_self(self):
-        self.setParent(None)
-        self.deleteLater()
-        self.remove_callback(self)
-
+        self.setParent(None); self.deleteLater(); self.remove_callback(self)
     def format_msisdns(self):
         txt = re.sub(r"\D", "", self.msisdns.toPlainText())
-        self.msisdns.blockSignals(True)
-        self.msisdns.setPlainText(txt)
-        self.msisdns.blockSignals(False)
-
+        self.msisdns.blockSignals(True); self.msisdns.setPlainText(txt); self.msisdns.blockSignals(False)
     def format_simserials(self):
         txt = re.sub(r"\D", "", self.simserials.toPlainText())
-        self.simserials.blockSignals(True)
-        self.simserials.setPlainText(txt)
-        self.simserials.blockSignals(False)
+        self.simserials.blockSignals(True); self.simserials.setPlainText(txt); self.simserials.blockSignals(False)
 
+# ----------------- SubmissionTab -----------------
 class SubmissionTab(QWidget):
     LEFT_WIDTH = 400
     RIGHT_WIDTH = 400
-
     def __init__(self):
         super().__init__()
         self.plan_widgets = []
@@ -99,11 +85,10 @@ class SubmissionTab(QWidget):
         self.main_layout.setSpacing(10)
         self.main_layout.setAlignment(Qt.AlignTop)
 
-        # Top: Left and Right Columns
-        top_row = QHBoxLayout()
-        top_row.setSpacing(50)
+        # --- Top (left/right) ---
+        top_row = QHBoxLayout(); top_row.setSpacing(50)
 
-        # Left
+        # Left column
         self.left_column = QVBoxLayout(); self.left_column.setAlignment(Qt.AlignTop)
         self.left_widgets = {}
         left_labels = ["Account Name", "New/Existing", "CR", "QID", "Email", "Dynamic ID", "Type", "Account Number", "Agent ID"]
@@ -112,7 +97,7 @@ class SubmissionTab(QWidget):
         left_widget = QWidget(); left_widget.setLayout(self.left_column); left_widget.setFixedWidth(self.LEFT_WIDTH)
         top_row.addWidget(left_widget)
 
-        # Right
+        # Right column
         self.right_column = QVBoxLayout(); self.right_column.setAlignment(Qt.AlignTop)
         self.right_widgets = {}
         right_labels = ["Require Movement", "Parent Account No", "Dynamic ID", "CR", "Existing Revenue"]
@@ -123,25 +108,44 @@ class SubmissionTab(QWidget):
 
         self.main_layout.addLayout(top_row)
 
-        # Plan section
+        # --- Plan section ---
         self.add_plan_btn = QPushButton("Add Plan")
         self.add_plan_btn.setFixedHeight(30); self.add_plan_btn.setFixedWidth(100)
         self.add_plan_btn.clicked.connect(self.add_plan)
         self.main_layout.addWidget(self.add_plan_btn)
 
-        self.plans_area = QScrollArea(); self.plans_area.setWidgetResizable(True)
-        self.plans_area.setFixedHeight(250)
-        self.plans_holder = QWidget()
-        self.plans_layout = QVBoxLayout(self.plans_holder)
+        self.plans_area = QScrollArea(); self.plans_area.setWidgetResizable(True); self.plans_area.setFixedHeight(250)
+        self.plans_holder = QWidget(); self.plans_layout = QVBoxLayout(self.plans_holder)
         self.plans_layout.setSpacing(5); self.plans_layout.setAlignment(Qt.AlignTop)
-        self.plans_area.setWidget(self.plans_holder)
-        self.main_layout.addWidget(self.plans_area)
+        self.plans_area.setWidget(self.plans_holder); self.main_layout.addWidget(self.plans_area)
 
-        # Preview Table
+        # --- NEW: To/CC fields ---
+        row_to = QHBoxLayout()
+        row_to.addWidget(QLabel("Submit to (email):"))
+        self.to_input = QLineEdit(); self.to_input.setFixedWidth(300)
+        row_to.addWidget(self.to_input); self.main_layout.addLayout(row_to)
+
+        row_cc = QHBoxLayout()
+        row_cc.addWidget(QLabel("CC (email):"))
+        self.cc_input = QLineEdit(); self.cc_input.setFixedWidth(300)
+        row_cc.addWidget(self.cc_input); self.main_layout.addLayout(row_cc)
+
+        # --- Preview greeting text ---
+        self.greeting_lbl = QLabel("Hi team\n\nPlease action the below")
+        self.main_layout.addWidget(self.greeting_lbl)
+
+        # --- Preview table ---
         self.preview_table = QTableWidget(); self.preview_table.setColumnCount(7)
-        self.preview_table.setHorizontalHeaderLabels(["Account Number", "Account Name", "Agent ID", "Msisdns", "Simserials", "Plan/Addon/Promo/Disc", "Spendlimit"])
+        self.preview_table.setHorizontalHeaderLabels(
+            ["Account Number", "Account Name", "Agent ID", "Msisdns", "Simserials", "Plan/Addon/Promo/Disc", "Spendlimit"]
+        )
         self.preview_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.main_layout.addWidget(self.preview_table)
+
+        # --- NEW: Submit button ---
+        self.submit_btn = QPushButton("Submit")
+        self.submit_btn.setFixedHeight(40); self.submit_btn.clicked.connect(self.send_email)
+        self.main_layout.addWidget(self.submit_btn)
 
         self.toggle_B_fields(); self.toggle_movement_fields()
 
@@ -162,7 +166,8 @@ class SubmissionTab(QWidget):
     def add_right_row(self, label_text):
         container = QWidget()
         lbl = QLabel(label_text); lbl.setFixedWidth(140); lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        if label_text == "Require Movement": input_widget = QComboBox(); input_widget.addItems(["Yes","No","Not Now"]); self.require_movement = input_widget
+        if label_text == "Require Movement": 
+            input_widget = QComboBox(); input_widget.addItems(["Yes","No","Not Now"]); self.require_movement = input_widget
         else: input_widget = QLineEdit(); input_widget.setFixedWidth(240)
         layout = QHBoxLayout(container); layout.setContentsMargins(0,0,0,0)
         layout.addWidget(lbl); layout.addWidget(input_widget); layout.addStretch()
@@ -184,10 +189,8 @@ class SubmissionTab(QWidget):
             for k in ["Parent Account No","Dynamic ID","CR","Existing Revenue"]: self.right_widgets[k].setVisible(False)
 
     def add_plan(self):
-        plan = PlanWidget(self.remove_plan)
-        self.plans_layout.addWidget(plan)
-        self.plan_widgets.append(plan)
-        self.update_preview()
+        plan = PlanWidget(self.remove_plan); self.plans_layout.addWidget(plan)
+        self.plan_widgets.append(plan); self.update_preview()
 
     def remove_plan(self, plan):
         if plan in self.plan_widgets: self.plan_widgets.remove(plan)
@@ -195,17 +198,23 @@ class SubmissionTab(QWidget):
 
     def update_preview(self):
         self.preview_table.setRowCount(0)
-        # row 1: Account details
         acc_num = self.left_widgets.get("Account Number", QLineEdit()).layout().itemAt(1).widget().text()
         acc_name = self.left_widgets.get("Account Name", QLineEdit()).layout().itemAt(1).widget().text()
         agent_id = self.left_widgets.get("Agent ID", QLineEdit()).layout().itemAt(1).widget().text()
         self.preview_table.setRowCount(2+len(self.plan_widgets))
-        self.preview_table.setItem(0,0,QTableWidgetItem("Account Number")); self.preview_table.setItem(0,1,QTableWidgetItem("Account Name")); self.preview_table.setItem(0,2,QTableWidgetItem("Agent ID"))
-        self.preview_table.setItem(1,0,QTableWidgetItem(acc_num)); self.preview_table.setItem(1,1,QTableWidgetItem(acc_name)); self.preview_table.setItem(1,2,QTableWidgetItem(agent_id))
-        # row 2: plan headers
-        self.preview_table.setItem(2,0,QTableWidgetItem("Msisdns")); self.preview_table.setItem(2,1,QTableWidgetItem("Simserials")); self.preview_table.setItem(2,2,QTableWidgetItem("Plan")); self.preview_table.setItem(2,3,QTableWidgetItem("Addons"))
-        self.preview_table.setItem(2,4,QTableWidgetItem("Promo")); self.preview_table.setItem(2,5,QTableWidgetItem("Discount")); self.preview_table.setItem(2,6,QTableWidgetItem("Spendlimit"))
-        # rows 3+: plan values
+        self.preview_table.setItem(0,0,QTableWidgetItem("Account Number"))
+        self.preview_table.setItem(0,1,QTableWidgetItem("Account Name"))
+        self.preview_table.setItem(0,2,QTableWidgetItem("Agent ID"))
+        self.preview_table.setItem(1,0,QTableWidgetItem(acc_num))
+        self.preview_table.setItem(1,1,QTableWidgetItem(acc_name))
+        self.preview_table.setItem(1,2,QTableWidgetItem(agent_id))
+        self.preview_table.setItem(2,0,QTableWidgetItem("Msisdns"))
+        self.preview_table.setItem(2,1,QTableWidgetItem("Simserials"))
+        self.preview_table.setItem(2,2,QTableWidgetItem("Plan"))
+        self.preview_table.setItem(2,3,QTableWidgetItem("Addons"))
+        self.preview_table.setItem(2,4,QTableWidgetItem("Promo"))
+        self.preview_table.setItem(2,5,QTableWidgetItem("Discount"))
+        self.preview_table.setItem(2,6,QTableWidgetItem("Spendlimit"))
         for i, plan in enumerate(self.plan_widgets):
             row = i+3
             self.preview_table.setItem(row,0,QTableWidgetItem(plan.msisdns.toPlainText()))
@@ -216,6 +225,30 @@ class SubmissionTab(QWidget):
             self.preview_table.setItem(row,5,QTableWidgetItem(plan.discount.currentText()))
             self.preview_table.setItem(row,6,QTableWidgetItem("0.01"))
 
+    def send_email(self):
+        to_email = self.to_input.text().strip()
+        cc_email = self.cc_input.text().strip()
+
+        # Convert table to HTML
+        html = "<p>Hi team,<br><br>Please action the below:</p><table border='1' cellspacing='0' cellpadding='3'>"
+        for row in range(self.preview_table.rowCount()):
+            html += "<tr>"
+            for col in range(self.preview_table.columnCount()):
+                item = self.preview_table.item(row,col)
+                txt = item.text() if item else ""
+                html += f"<td>{txt}</td>"
+            html += "</tr>"
+        html += "</table>"
+
+        outlook = win32com.client.Dispatch("Outlook.Application")
+        mail = outlook.CreateItem(0)
+        mail.To = to_email
+        mail.CC = cc_email
+        mail.Subject = "Submission Preview"
+        mail.HTMLBody = html
+        mail.Send()
+
+# ----------------- MainApp -----------------
 class MainApp(QTabWidget):
     def __init__(self):
         super().__init__()
@@ -235,4 +268,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
