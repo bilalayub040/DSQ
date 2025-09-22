@@ -1,13 +1,13 @@
 import sys, re, os
 import win32com.client  # for Outlook desktop
+import requests
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QColor, QBrush
-
-from PyQt5.QtWidgets import QTableWidgetItem
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QComboBox, QPushButton, QTextEdit, QGroupBox,
-    QScrollArea, QTableWidget, QTableWidgetItem, QFileDialog, QSizePolicy
+    QScrollArea, QTableWidget, QTableWidgetItem, QFileDialog, QSizePolicy,
+    QListWidget, QListWidgetItem
 )
 
 # ----------------- PlanWidget -----------------
@@ -142,6 +142,7 @@ class SubmissionTab(QWidget):
         self.logged_in_users = []
         self.initUI()
         self.update_preview()
+
     def initUI(self):
         outer = QVBoxLayout(self)
         outer.setContentsMargins(8, 8, 8, 8)
@@ -213,30 +214,56 @@ class SubmissionTab(QWidget):
         self.plans_holder.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.plans_area.setWidget(self.plans_holder)
         self.content_layout.addWidget(self.plans_area)
-        
+
         # --- EMAIL SECTION ---
-        email_row = QHBoxLayout()
-        email_row.addWidget(QLabel("Submit to:"))
-        self.to_input = QLineEdit(); self.to_input.setFixedWidth(220)
-        email_row.addWidget(self.to_input)
-        email_row.addWidget(QLabel("CC:"))
-        self.cc_input = QLineEdit(); self.cc_input.setFixedWidth(220)
-        email_row.addWidget(self.cc_input)
-        self.attach_btn = QPushButton("Attachments"); self.attach_btn.setFixedHeight(28)
+        email_layout = QVBoxLayout()
+
+        # TO row
+        to_row = QHBoxLayout()
+        to_row.addWidget(QLabel("Submit to:"))
+        self.to_input = QComboBox(); self.to_input.setFixedWidth(220)
+        to_row.addWidget(self.to_input)
+        to_row.addStretch()
+        email_layout.addLayout(to_row)
+
+        # CC row
+        cc_row = QHBoxLayout()
+        cc_row.addWidget(QLabel("CC:"))
+        self.cc_input = QComboBox(); self.cc_input.setFixedWidth(220)
+        cc_row.addWidget(self.cc_input)
+        cc_row.addStretch()
+        email_layout.addLayout(cc_row)
+
+        # Others row
+        others_row = QHBoxLayout()
+        others_row.addWidget(QLabel("Others:"))
+        self.others_input = QLineEdit(); self.others_input.setFixedWidth(400)
+        others_row.addWidget(self.others_input)
+        others_row.addStretch()
+        email_layout.addLayout(others_row)
+
+        # Attachments row
+        attach_row = QHBoxLayout()
+        self.attach_btn = QPushButton("Add Attachments"); self.attach_btn.setFixedHeight(28)
         self.attach_btn.clicked.connect(self.select_attachments)
-        email_row.addWidget(self.attach_btn)
-        self.clear_btn = QPushButton("Clear"); self.clear_btn.setFixedHeight(28)
-        self.clear_btn.clicked.connect(self.clear_email_inputs)
-        email_row.addWidget(self.clear_btn)
-        self.update_preview_btn = QPushButton("Update Preview"); self.update_preview_btn.setFixedHeight(28)
-        self.update_preview_btn.clicked.connect(self.update_preview)
-        email_row.addWidget(self.update_preview_btn)
-        self.content_layout.addLayout(email_row)
+        self.clear_btn = QPushButton("Clear Attachments"); self.clear_btn.setFixedHeight(28)
+        self.clear_btn.clicked.connect(self.clear_attachments)
+        attach_row.addWidget(self.attach_btn)
+        attach_row.addWidget(self.clear_btn)
+        attach_row.addStretch()
+        email_layout.addLayout(attach_row)
 
-        self.attachments_label = QLabel("")
-        self.attachments_label.setWordWrap(True)
-        self.content_layout.addWidget(self.attachments_label)
+        # Attachments container
+        self.attachments_list = QListWidget()
+        self.attachments_list.setFixedHeight(60)
+        self.attachments_list.itemDoubleClicked.connect(self.remove_attachment_item)
+        email_layout.addWidget(self.attachments_list)
 
+        self.content_layout.addLayout(email_layout)
+
+        self.load_email_lists()
+
+        # --- GREETING LABEL ---
         self.greeting_lbl = QLabel("Hi team,\n\nPlease action the below:")
         self.content_layout.addWidget(self.greeting_lbl)
 
@@ -250,6 +277,7 @@ class SubmissionTab(QWidget):
         self.preview_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.content_layout.addWidget(self.preview_table)
 
+        # --- SUBMIT BUTTON ROW ---
         submit_row = QHBoxLayout()
         self.submit_btn = QPushButton("Send"); self.submit_btn.setFixedHeight(36); self.submit_btn.setFixedWidth(120)
         self.submit_btn.clicked.connect(self.send_email)
@@ -348,32 +376,47 @@ class SubmissionTab(QWidget):
             self.plans_layout.removeWidget(plan)
             plan.deleteLater()
 
-    # ----------------- EMAIL -----------------
+    # ----------------- ATTACHMENTS -----------------
     def select_attachments(self):
         files, _ = QFileDialog.getOpenFileNames(self, "Select Files")
-        if files:
-            self.attachments = files
-            names = [os.path.basename(f) for f in files]
-            display = ", ".join(names)
-            if len(display) > 220: display = display[:217] + "..."
-            self.attachments_label.setText(display)
+        for f in files:
+            if f not in self.attachments:
+                self.attachments.append(f)
+                item = QListWidgetItem(os.path.basename(f))
+                item.setData(Qt.UserRole, f)
+                self.attachments_list.addItem(item)
 
-    def clear_email_inputs(self):
-        self.to_input.clear()
-        self.cc_input.clear()
+    def clear_attachments(self):
         self.attachments = []
-        self.attachments_label.clear()
+        self.attachments_list.clear()
 
+    def remove_attachment_item(self, item):
+        path = item.data(Qt.UserRole)
+        if path in self.attachments:
+            self.attachments.remove(path)
+        self.attachments_list.takeItem(self.attachments_list.row(item))
+
+    # ----------------- EMAIL LIST LOADING -----------------
+    def load_email_lists(self):
+        try:
+            to_txt = requests.get("https://raw.githubusercontent.com/.../public/BO_emails.txt").text
+            self.to_input.addItems([x.strip() for x in to_txt.splitlines() if x.strip()])
+        except Exception:
+            pass
+        try:
+            cc_txt = requests.get("https://raw.githubusercontent.com/.../public/CC_emails.txt").text
+            self.cc_input.addItems([x.strip() for x in cc_txt.splitlines() if x.strip()])
+        except Exception:
+            pass
+
+    # ----------------- PREVIEW -----------------
     def _get_left_input_text(self, label):
         cont = self.left_widgets.get(label)
         if not cont: return ""
         le = cont.findChild(QLineEdit)
         return le.text() if le else ""
 
-    # ----------------- PREVIEW / SEND -----------------
-
     def update_preview(self):
-        
         self.preview_table.setRowCount(0)
         self.preview_table.horizontalHeader().setVisible(False)
         self.preview_table.verticalHeader().setVisible(False)
@@ -433,24 +476,20 @@ class SubmissionTab(QWidget):
 
         self.preview_table.resizeColumnsToContents()
 
-
-
+    # ----------------- SEND EMAIL -----------------
     def send_email(self):
         self.update_preview()
-        to_email = self.to_input.text().strip()
-        cc_email = self.cc_input.text().strip()
+        to_email = self.to_input.currentText().strip()
+        cc_email = self.cc_input.currentText().strip()
 
-        # Always add the selected sender email to CC
         sender_email = self.user_combo.currentText()
         if sender_email:
-            if cc_email:
-                cc_email += f"; {sender_email}"  # append if something already in CC
-            else:
-                cc_email = sender_email
+            cc_email = f"{cc_email}; {sender_email}" if cc_email else sender_email
 
-        if not to_email:
-            self.status_lbl.setText("Please enter a recipient (To).")
-            return
+        others_raw = self.others_input.text().strip()
+        others_emails = re.split(r"[ ,;]+", others_raw) if others_raw else []
+
+        all_to = [to_email] + others_emails
 
         html = "<p>Hi team,<br><br>Please action the below:</p><table border='1' cellspacing='0' cellpadding='3'>"
         for r in range(self.preview_table.rowCount()):
@@ -466,20 +505,21 @@ class SubmissionTab(QWidget):
             self.status_lbl.setText("Sending...")
             QApplication.processEvents()
             outlook = win32com.client.Dispatch("Outlook.Application")
-            mail = outlook.CreateItem(0)
-            mail.To = to_email
-            mail.CC = cc_email
-            mail.Subject = "Submission Preview"
-            mail.HTMLBody = html
-            for f in self.attachments:
-                try:
-                    mail.Attachments.Add(f)
-                except Exception:
-                    pass
-            mail.Send()
+            for to in all_to:
+                if not to.strip(): continue
+                mail = outlook.CreateItem(0)
+                mail.To = to.strip()
+                mail.CC = cc_email
+                mail.Subject = "Submission Preview"
+                mail.HTMLBody = html
+                for f in self.attachments:
+                    try: mail.Attachments.Add(f)
+                    except: pass
+                mail.Send()
             self.status_lbl.setText("Sent successfully ✓")
         except Exception as ex:
             self.status_lbl.setText("Send failed: " + str(ex))
+
 
 # ----------------- MainApp -----------------
 class MainApp(QTabWidget):
