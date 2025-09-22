@@ -1,2 +1,6 @@
-fixed.support@dsq.qa;
-bilalayub040@gmail.com;
+fixed.support@dsq.qa
+fixed.support2@dsq.qa
+customer.support2@dsq.qa
+customer.support3@dsq.qa
+business.support@dsq.qa
+sme.support@dsq.qa
