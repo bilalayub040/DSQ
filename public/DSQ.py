@@ -399,12 +399,12 @@ class SubmissionTab(QWidget):
     # ----------------- EMAIL LIST LOADING -----------------
     def load_email_lists(self):
         try:
-            to_txt = requests.get("https://raw.githubusercontent.com/.../public/BO_emails.txt").text
+            to_txt = requests.get("https://dsq-beta.vercel.app/BO_emails.txt").text
             self.to_input.addItems([x.strip() for x in to_txt.splitlines() if x.strip()])
         except Exception:
             pass
         try:
-            cc_txt = requests.get("https://raw.githubusercontent.com/.../public/CC_emails.txt").text
+            cc_txt = requests.get("https://dsq-beta.vercel.app/CC_emails.txt").text
             self.cc_input.addItems([x.strip() for x in cc_txt.splitlines() if x.strip()])
         except Exception:
             pass
@@ -541,3 +541,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
