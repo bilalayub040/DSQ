@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Electron Launcher</title>
+<title>DSQ Enterprise</title>
 <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
     button { padding: 10px 20px; margin: 10px 0; font-size: 16px; cursor: pointer; }
@@ -10,7 +10,7 @@
 </head>
 <body>
 
-<h2>Launcher App</h2>
+<!--<h2>Launcher App</h2>-->
 
 <!-- Example buttons -->
 <button id="submissionBtn">Submission</button>
@@ -18,7 +18,7 @@
 <script>
     const { ipcRenderer } = require('electron');
 
-    document.getElementById('submissionBtn').addEventListener('click', () => {
+    document.getElementById('SubmissionBtn').addEventListener('click', () => {
         ipcRenderer.send('run-python', 'https://dsq-beta.vercel.app/DSQ.py');
     });
 
@@ -33,6 +33,7 @@
 
 </body>
 </html>
+
 
 
 
