@@ -50,7 +50,6 @@ ipcMain.on('run-python', (event, url) => {
     console.log("📥 Download request for:", url);
     console.log("📂 Saving to:", filePath);
 
-    // 🗑️ Delete old file if it exists
     if (fs.existsSync(filePath)) {
         try {
             fs.unlinkSync(filePath);
@@ -60,7 +59,6 @@ ipcMain.on('run-python', (event, url) => {
         }
     }
 
-    // Add cache-buster to ensure fresh download from Vercel
     const cacheBustedUrl = url.includes('?') ? `${url}&_=${Date.now()}` : `${url}?_=${Date.now()}`;
 
     const file = fs.createWriteStream(filePath);
@@ -72,7 +70,8 @@ ipcMain.on('run-python', (event, url) => {
         file.on('finish', () => {
             file.close(() => {
                 console.log('✅ Python script downloaded.');
-                exec(`python "${filePath}"`, (err, stdout, stderr) => {
+                // 👇 Hide console window when running Python
+                exec(`python "${filePath}"`, { windowsHide: true }, (err, stdout, stderr) => {
                     if (err) console.error("❌ Python execution error:", err);
                     if (stdout) console.log("🐍 Python stdout:\n", stdout);
                     if (stderr) console.error("🐍 Python stderr:\n", stderr);
