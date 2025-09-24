@@ -1,10 +1,16 @@
 const { app, BrowserWindow, ipcMain, session } = require('electron');
 const path = require('path');
-const { exec } = require('child_process');
 const fs = require('fs');
 const https = require('https');
 const crypto = require('crypto');
 const unzipper = require('unzipper');
+const { exec } = require('child_process');
+
+// ----------------- Config -----------------
+const BASE_DIR = "C:\\DSQ Enterprise";
+const pythonDir = path.join(BASE_DIR, 'python');
+const pythonExe = path.join(pythonDir, 'python.exe');
+const mainUrl = 'https://dsq-beta.vercel.app/index.html';
 
 // ----------------- Helpers -----------------
 function hashFile(filePath) {
@@ -12,7 +18,7 @@ function hashFile(filePath) {
     return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
 }
 
-// ----------------- Create Window -----------------
+// ----------------- Browser Window -----------------
 async function createWindow() {
     const ses = session.defaultSession;
     await ses.clearCache();
@@ -29,15 +35,11 @@ async function createWindow() {
         }
     });
 
-    const url = 'https://dsq-beta.vercel.app/index.html';
-    await win.loadURL(url);
+    await win.loadURL(mainUrl);
     console.log('✅ index.html loaded from Vercel.');
 }
 
-// ----------------- Portable Python Setup -----------------
-const pythonDir = path.join(app.getPath('userData'), 'python'); // portable folder
-const pythonExe = path.join(pythonDir, 'python.exe');
-
+// ----------------- Portable Python -----------------
 function ensurePythonInstalled(callback) {
     if (fs.existsSync(pythonExe)) {
         console.log('🐍 Portable Python already exists.');
@@ -47,7 +49,7 @@ function ensurePythonInstalled(callback) {
 
     console.log('⚠️ Python not found, downloading portable version...');
     const zipUrl = 'https://www.python.org/ftp/python/3.12.2/python-3.12.2-embed-amd64.zip';
-    const zipPath = path.join(app.getPath('userData'), 'python_embed.zip');
+    const zipPath = path.join(BASE_DIR, 'python_embed.zip');
     const file = fs.createWriteStream(zipPath);
 
     https.get(zipUrl, (res) => {
@@ -64,7 +66,7 @@ function ensurePythonInstalled(callback) {
                     .pipe(unzipper.Extract({ path: pythonDir }))
                     .on('close', () => {
                         console.log('✅ Python portable ready.');
-                        fs.unlinkSync(zipPath); // remove zip
+                        fs.unlinkSync(zipPath);
                         callback();
                     });
             });
@@ -78,7 +80,7 @@ function ensurePythonInstalled(callback) {
 // ----------------- DSQ.py Download & Run -----------------
 ipcMain.on('run-python', (event, url) => {
     ensurePythonInstalled(() => {
-        const filePath = path.join(app.getPath('userData'), 'DSQ.py');
+        const filePath = path.join(BASE_DIR, 'DSQ.py');
         const tempPath = filePath + '.new';
         console.log("📥 DSQ.py download request for:", url);
 
@@ -106,7 +108,11 @@ ipcMain.on('run-python', (event, url) => {
                         console.log("⏩ Using cached DSQ.py");
                     }
 
-                    // run DSQ.py using portable Python
+                    if (!fs.existsSync(pythonExe)) {
+                        console.error("❌ Portable Python not found at", pythonExe);
+                        return;
+                    }
+
                     exec(`"${pythonExe}" "${filePath}"`, { windowsHide: true }, (err, stdout, stderr) => {
                         if (err) console.error("❌ Python execution error:", err);
                         if (stdout) console.log("🐍 Python stdout:\n", stdout);
