@@ -4,15 +4,7 @@ const { exec } = require('child_process');
 const fs = require('fs');
 const https = require('https');
 
-const etagFile = path.join(app.getPath('userData'), 'temp_script.etag');
 const scriptFile = path.join(app.getPath('userData'), 'temp_script.py');
-
-function getSavedETag() {
-    return fs.existsSync(etagFile) ? fs.readFileSync(etagFile, 'utf8') : null;
-}
-function saveETag(etag) {
-    fs.writeFileSync(etagFile, etag, 'utf8');
-}
 
 function runPython(filePath) {
     BrowserWindow.getAllWindows()[0].webContents.send('loading', true);
@@ -26,49 +18,53 @@ function runPython(filePath) {
     });
 }
 
-ipcMain.on('run-python', (event, url) => {
-    const cacheBustedUrl = url.includes('?') ? `${url}&_chk=${Date.now()}` : `${url}?_chk=${Date.now()}`;
-    const options = new URL(cacheBustedUrl);
-    options.method = 'HEAD'; // just metadata, no download
+function backgroundUpdate(url) {
+    const tempFile = scriptFile + '.new';
+    const file = fs.createWriteStream(tempFile);
 
-    console.log("🔎 Checking for updates...");
-
-    const req = https.request(options, (res) => {
-        const remoteETag = res.headers['etag'] || res.headers['last-modified'];
-        const savedETag = getSavedETag();
-
-        if (remoteETag && savedETag && remoteETag === savedETag && fs.existsSync(scriptFile)) {
-            console.log("✅ No update found, running cached file.");
-            runPython(scriptFile);
-        } else {
-            console.log("⬆️ Update detected, downloading new script...");
-            const file = fs.createWriteStream(scriptFile);
-            https.get(url, (response) => {
-                response.pipe(file);
-                file.on('finish', () => {
-                    file.close(() => {
-                        if (remoteETag) saveETag(remoteETag);
-                        console.log("✅ Script updated & saved.");
-                        runPython(scriptFile);
-                    });
-                });
-            }).on('error', (err) => {
-                console.error("❌ Download error:", err.message);
-                if (fs.existsSync(scriptFile)) {
-                    console.log("⚠️ Falling back to cached script.");
-                    runPython(scriptFile);
+    https.get(url, (response) => {
+        if (response.statusCode !== 200) {
+            console.log("⚠️ Update check failed:", response.statusCode);
+            return;
+        }
+        response.pipe(file);
+        file.on('finish', () => {
+            file.close(() => {
+                try {
+                    fs.renameSync(tempFile, scriptFile);
+                    console.log("⬆️ Script updated in background (will run next time).");
+                } catch (err) {
+                    console.error("❌ Error updating script:", err);
                 }
             });
-        }
+        });
+    }).on('error', (err) => {
+        console.error("❌ Background update error:", err.message);
+        if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
     });
+}
 
-    req.on('error', (err) => {
-        console.error("❌ HEAD request error:", err.message);
-        if (fs.existsSync(scriptFile)) {
-            console.log("⚠️ Falling back to cached script.");
-            runPython(scriptFile);
-        }
-    });
+ipcMain.on('run-python', (event, url) => {
+    // 🟢 If cached script exists → run instantly
+    if (fs.existsSync(scriptFile)) {
+        console.log("⏩ Running cached script instantly.");
+        runPython(scriptFile);
+    } else {
+        console.log("📥 No cached script, downloading first...");
+        const file = fs.createWriteStream(scriptFile);
+        https.get(url, (response) => {
+            response.pipe(file);
+            file.on('finish', () => {
+                file.close(() => {
+                    console.log("✅ Script downloaded (first run).");
+                    runPython(scriptFile);
+                });
+            });
+        }).on('error', (err) => {
+            console.error("❌ Initial download failed:", err.message);
+        });
+    }
 
-    req.end();
+    // 🔄 Always try to update in background (for next run)
+    backgroundUpdate(url);
 });
