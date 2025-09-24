@@ -3,68 +3,87 @@ const path = require('path');
 const { exec } = require('child_process');
 const fs = require('fs');
 const https = require('https');
+const crypto = require('crypto');
 
-const scriptFile = path.join(app.getPath('userData'), 'temp_script.py');
-
-function runPython(filePath) {
-    BrowserWindow.getAllWindows()[0].webContents.send('loading', true);
-
-    exec(`python "${filePath}"`, { windowsHide: true }, (err, stdout, stderr) => {
-        if (err) console.error("❌ Python execution error:", err);
-        if (stdout) console.log("🐍 Python stdout:\n", stdout);
-        if (stderr) console.error("🐍 Python stderr:\n", stderr);
-
-        BrowserWindow.getAllWindows()[0].webContents.send('loading', false);
-    });
+function hashFile(filePath) {
+    if (!fs.existsSync(filePath)) return null;
+    return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
 }
 
-function backgroundUpdate(url) {
-    const tempFile = scriptFile + '.new';
-    const file = fs.createWriteStream(tempFile);
+async function createWindow() {
+    const ses = session.defaultSession;
+    await ses.clearCache();
+    await ses.clearStorageData();
+    console.log('🗑️ Cache and storage cleared.');
 
-    https.get(url, (response) => {
-        if (response.statusCode !== 200) {
-            console.log("⚠️ Update check failed:", response.statusCode);
-            return;
+    const win = new BrowserWindow({
+        width: 1200,
+        height: 900,
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false,
+            webSecurity: false
         }
-        response.pipe(file);
-        file.on('finish', () => {
-            file.close(() => {
-                try {
-                    fs.renameSync(tempFile, scriptFile);
-                    console.log("⬆️ Script updated in background (will run next time).");
-                } catch (err) {
-                    console.error("❌ Error updating script:", err);
-                }
-            });
-        });
-    }).on('error', (err) => {
-        console.error("❌ Background update error:", err.message);
-        if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
     });
+
+    const url = 'https://dsq-beta.vercel.app/index.html';
+    await win.loadURL(url);
+    console.log('✅ index.html loaded from Vercel.');
 }
 
 ipcMain.on('run-python', (event, url) => {
-    // 🟢 If cached script exists → run instantly
-    if (fs.existsSync(scriptFile)) {
-        console.log("⏩ Running cached script instantly.");
-        runPython(scriptFile);
-    } else {
-        console.log("📥 No cached script, downloading first...");
-        const file = fs.createWriteStream(scriptFile);
-        https.get(url, (response) => {
-            response.pipe(file);
-            file.on('finish', () => {
-                file.close(() => {
-                    console.log("✅ Script downloaded (first run).");
-                    runPython(scriptFile);
+    const filePath = path.join(app.getPath('userData'), 'temp_script.py');
+    const tempPath = filePath + '.new';
+
+    console.log("📥 Download request for:", url);
+
+    const file = fs.createWriteStream(tempPath);
+    const cacheBustedUrl = url.includes('?') ? `${url}&_=${Date.now()}` : `${url}?_=${Date.now()}`;
+
+    https.get(cacheBustedUrl, (response) => {
+        if (response.statusCode !== 200) {
+            console.error(`❌ Failed to download: ${response.statusCode}`);
+            file.close(); fs.unlinkSync(tempPath);
+            return;
+        }
+
+        response.pipe(file);
+        file.on('finish', () => {
+            file.close(() => {
+                const newHash = crypto.createHash('sha256')
+                                      .update(fs.readFileSync(tempPath)).digest('hex');
+                const oldHash = hashFile(filePath);
+
+                if (newHash !== oldHash) {
+                    // overwrite with new version
+                    fs.renameSync(tempPath, filePath);
+                    console.log("⬆️ Python script updated.");
+                } else {
+                    // same as before → discard temp
+                    fs.unlinkSync(tempPath);
+                    console.log("⏩ No update, using cached Python script.");
+                }
+
+                // always run the current version
+                exec(`python "${filePath}"`, { windowsHide: true }, (err, stdout, stderr) => {
+                    if (err) console.error("❌ Python execution error:", err);
+                    if (stdout) console.log("🐍 Python stdout:\n", stdout);
+                    if (stderr) console.error("🐍 Python stderr:\n", stderr);
                 });
             });
-        }).on('error', (err) => {
-            console.error("❌ Initial download failed:", err.message);
         });
-    }
+    }).on('error', (err) => {
+        console.error('❌ Download error:', err.message);
+        if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+    });
+});
 
-    // 🔄 Always try to update in background (for next run)
-    backgroundUpdate(url);
+app.whenReady().then(createWindow);
+
+app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
