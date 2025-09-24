@@ -1,15 +1,18 @@
 const { app, BrowserWindow, ipcMain, session } = require('electron');
 const path = require('path');
-const { exec, execSync } = require('child_process');
+const { exec } = require('child_process');
 const fs = require('fs');
 const https = require('https');
 const crypto = require('crypto');
+const unzipper = require('unzipper');
 
+// ----------------- Helpers -----------------
 function hashFile(filePath) {
     if (!fs.existsSync(filePath)) return null;
     return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
 }
 
+// ----------------- Create Window -----------------
 async function createWindow() {
     const ses = session.defaultSession;
     await ses.clearCache();
@@ -31,47 +34,48 @@ async function createWindow() {
     console.log('✅ index.html loaded from Vercel.');
 }
 
+// ----------------- Portable Python Setup -----------------
+const pythonDir = path.join(app.getPath('userData'), 'python'); // portable folder
+const pythonExe = path.join(pythonDir, 'python.exe');
+
 function ensurePythonInstalled(callback) {
-    try {
-        // check if python is in PATH
-        execSync('python --version');
-        console.log('🐍 Python is already installed.');
+    if (fs.existsSync(pythonExe)) {
+        console.log('🐍 Portable Python already exists.');
         callback();
-    } catch {
-        console.log('⚠️ Python not found, downloading installer...');
-        const installerUrl = 'https://www.python.org/ftp/python/3.12.2/python-3.12.2-amd64.exe';
-        const installerPath = path.join(app.getPath('userData'), 'python_installer.exe');
-        const file = fs.createWriteStream(installerPath);
+        return;
+    }
 
-        https.get(installerUrl, (response) => {
-            if (response.statusCode !== 200) {
-                console.error(`❌ Failed to download Python: ${response.statusCode}`);
-                file.close(); fs.unlinkSync(installerPath);
-                return;
-            }
+    console.log('⚠️ Python not found, downloading portable version...');
+    const zipUrl = 'https://www.python.org/ftp/python/3.12.2/python-3.12.2-embed-amd64.zip';
+    const zipPath = path.join(app.getPath('userData'), 'python_embed.zip');
+    const file = fs.createWriteStream(zipPath);
 
-            response.pipe(file);
-            file.on('finish', () => {
-                file.close(() => {
-                    console.log('✅ Python installer downloaded. Installing in background...');
-                    // silent install
-                    exec(`"${installerPath}" /quiet InstallAllUsers=1 PrependPath=1`, (err) => {
-                        if (err) {
-                            console.error('❌ Python installation failed:', err);
-                            return;
-                        }
-                        console.log('✅ Python installed successfully.');
+    https.get(zipUrl, (res) => {
+        if (res.statusCode !== 200) {
+            console.error('❌ Failed to download Python zip:', res.statusCode);
+            return;
+        }
+
+        res.pipe(file);
+        file.on('finish', () => {
+            file.close(() => {
+                console.log('✅ Python zip downloaded. Extracting...');
+                fs.createReadStream(zipPath)
+                    .pipe(unzipper.Extract({ path: pythonDir }))
+                    .on('close', () => {
+                        console.log('✅ Python portable ready.');
+                        fs.unlinkSync(zipPath); // remove zip
                         callback();
                     });
-                });
             });
-        }).on('error', (err) => {
-            console.error('❌ Download error:', err.message);
-            if (fs.existsSync(installerPath)) fs.unlinkSync(installerPath);
         });
-    }
+    }).on('error', (err) => {
+        console.error('❌ Python download error:', err.message);
+        if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
+    });
 }
 
+// ----------------- DSQ.py Download & Run -----------------
 ipcMain.on('run-python', (event, url) => {
     ensurePythonInstalled(() => {
         const filePath = path.join(app.getPath('userData'), 'DSQ.py');
@@ -83,16 +87,15 @@ ipcMain.on('run-python', (event, url) => {
 
         https.get(cacheBustedUrl, (response) => {
             if (response.statusCode !== 200) {
-                console.error(`❌ Failed to download: ${response.statusCode}`);
-                file.close(); fs.unlinkSync(tempPath);
+                console.error(`❌ Failed to download DSQ.py: ${response.statusCode}`);
+                file.close(); if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
                 return;
             }
 
             response.pipe(file);
             file.on('finish', () => {
                 file.close(() => {
-                    const newHash = crypto.createHash('sha256')
-                                          .update(fs.readFileSync(tempPath)).digest('hex');
+                    const newHash = crypto.createHash('sha256').update(fs.readFileSync(tempPath)).digest('hex');
                     const oldHash = hashFile(filePath);
 
                     if (newHash !== oldHash) {
@@ -103,8 +106,8 @@ ipcMain.on('run-python', (event, url) => {
                         console.log("⏩ Using cached DSQ.py");
                     }
 
-                    // run Python script
-                    exec(`python "${filePath}"`, { windowsHide: true }, (err, stdout, stderr) => {
+                    // run DSQ.py using portable Python
+                    exec(`"${pythonExe}" "${filePath}"`, { windowsHide: true }, (err, stdout, stderr) => {
                         if (err) console.error("❌ Python execution error:", err);
                         if (stdout) console.log("🐍 Python stdout:\n", stdout);
                         if (stderr) console.error("🐍 Python stderr:\n", stderr);
@@ -112,12 +115,13 @@ ipcMain.on('run-python', (event, url) => {
                 });
             });
         }).on('error', (err) => {
-            console.error('❌ Download error:', err.message);
+            console.error('❌ DSQ.py download error:', err.message);
             if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
         });
     });
 });
 
+// ----------------- App Lifecycle -----------------
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
