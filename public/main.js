@@ -3,6 +3,12 @@ const path = require('path');
 const { exec } = require('child_process');
 const fs = require('fs');
 const https = require('https');
+const crypto = require('crypto');
+
+function hashFile(filePath) {
+    if (!fs.existsSync(filePath)) return null;
+    return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+}
 
 async function createWindow() {
     const ses = session.defaultSession;
@@ -20,57 +26,45 @@ async function createWindow() {
         }
     });
 
-    // Intercept requests for cache busting
-    ses.webRequest.onBeforeRequest((details, callback) => {
-        let url = details.url;
-        if (url.startsWith('http') && !url.includes('_=')) {
-            if (url.indexOf('?') > -1) {
-                url += `&_=${Date.now()}`;
-            } else {
-                url += `?_=${Date.now()}`;
-            }
-            callback({ redirectURL: url });
-        } else {
-            callback({});
-        }
-    });
-
     const url = 'https://dsq-beta.vercel.app/index.html';
     await win.loadURL(url);
     console.log('✅ index.html loaded from Vercel.');
-
-    win.webContents.on('did-finish-load', () => {
-        console.log('✅ Renderer finished loading.');
-    });
 }
 
 ipcMain.on('run-python', (event, url) => {
     const filePath = path.join(app.getPath('userData'), 'temp_script.py');
+    const tempPath = filePath + '.new';
 
     console.log("📥 Download request for:", url);
-    console.log("📂 Saving to:", filePath);
 
-    if (fs.existsSync(filePath)) {
-        try {
-            fs.unlinkSync(filePath);
-            console.log('🗑️ Old Python file removed.');
-        } catch (err) {
-            console.error('❌ Error removing old Python file:', err);
-        }
-    }
-
+    const file = fs.createWriteStream(tempPath);
     const cacheBustedUrl = url.includes('?') ? `${url}&_=${Date.now()}` : `${url}?_=${Date.now()}`;
 
-    const file = fs.createWriteStream(filePath);
     https.get(cacheBustedUrl, (response) => {
-        console.log("🌐 HTTP Status:", response.statusCode, response.statusMessage);
-        console.log("📏 Content-Type:", response.headers['content-type']);
+        if (response.statusCode !== 200) {
+            console.error(`❌ Failed to download: ${response.statusCode}`);
+            file.close(); fs.unlinkSync(tempPath);
+            return;
+        }
 
         response.pipe(file);
         file.on('finish', () => {
             file.close(() => {
-                console.log('✅ Python script downloaded.');
-                // 👇 Hide console window when running Python
+                const newHash = crypto.createHash('sha256')
+                                      .update(fs.readFileSync(tempPath)).digest('hex');
+                const oldHash = hashFile(filePath);
+
+                if (newHash !== oldHash) {
+                    // overwrite with new version
+                    fs.renameSync(tempPath, filePath);
+                    console.log("⬆️ Python script updated.");
+                } else {
+                    // same as before → discard temp
+                    fs.unlinkSync(tempPath);
+                    console.log("⏩ No update, using cached Python script.");
+                }
+
+                // always run the current version
                 exec(`python "${filePath}"`, { windowsHide: true }, (err, stdout, stderr) => {
                     if (err) console.error("❌ Python execution error:", err);
                     if (stdout) console.log("🐍 Python stdout:\n", stdout);
@@ -79,8 +73,8 @@ ipcMain.on('run-python', (event, url) => {
             });
         });
     }).on('error', (err) => {
-        fs.unlink(filePath, () => {});
         console.error('❌ Download error:', err.message);
+        if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
     });
 });
 
