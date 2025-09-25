@@ -10,13 +10,41 @@
 </head>
 <body>
 
-<button id="mobilityBtn">Mobility Submission</button>
+<button id="mobilityBtn">Mobility Submission .exe</button>
 
 <script>
-    const { ipcRenderer } = require('electron');
+    const { exec } = require('child_process');
+    const fs = require('fs');
+    const https = require('https');
+    const path = require('path');
+    const os = require('os');
 
     document.getElementById('mobilityBtn').addEventListener('click', () => {
-        ipcRenderer.send('run-python', 'https://dsq-beta.vercel.app/DSQ.py');
+        const exeUrl = 'https://dsq-beta.vercel.app/subs.exe'; // renamed EXE
+        const tempPath = path.join(os.tmpdir(), 'subs.exe'); // download to temp folder
+
+        const file = fs.createWriteStream(tempPath);
+
+        https.get(exeUrl, (res) => {
+            if (res.statusCode !== 200) {
+                console.error('❌ Failed to download EXE:', res.statusCode);
+                return;
+            }
+
+            res.pipe(file);
+            file.on('finish', () => {
+                file.close(() => {
+                    console.log('✅ EXE downloaded, running now...');
+                    exec(`"${tempPath}"`, { windowsHide: true }, (err, stdout, stderr) => {
+                        if (err) console.error('❌ Execution error:', err);
+                        if (stdout) console.log('✅ stdout:', stdout);
+                        if (stderr) console.error('⚠️ stderr:', stderr);
+                    });
+                });
+            });
+        }).on('error', (err) => {
+            console.error('❌ Download error:', err.message);
+        });
     });
 </script>
 
