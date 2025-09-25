@@ -7,8 +7,6 @@ const { exec } = require('child_process');
 
 // ----------------- Config -----------------
 const BASE_DIR = "C:\\DSQ Enterprise";
-// Use global Python
-const pythonExe = "python"; // assumes Python is in PATH
 const mainUrl = 'https://dsq-beta.vercel.app/index.html';
 
 // ----------------- Helpers -----------------
@@ -38,18 +36,18 @@ async function createWindow() {
     console.log('✅ index.html loaded from Vercel.');
 }
 
-// ----------------- DSQ.py Download & Run -----------------
+// ----------------- subs.exe Download & Run -----------------
 ipcMain.on('run-python', (event, url) => {
-    const filePath = path.join(BASE_DIR, 'DSQ.py');
+    const filePath = path.join(BASE_DIR, 'subs.exe'); // renamed EXE
     const tempPath = filePath + '.new';
-    console.log("📥 DSQ.py download request for:", url);
+    console.log("📥 subs.exe download request for:", url);
 
     const file = fs.createWriteStream(tempPath);
     const cacheBustedUrl = url.includes('?') ? `${url}&_=${Date.now()}` : `${url}?_=${Date.now()}`;
 
     https.get(cacheBustedUrl, (response) => {
         if (response.statusCode !== 200) {
-            console.error(`❌ Failed to download DSQ.py: ${response.statusCode}`);
+            console.error(`❌ Failed to download subs.exe: ${response.statusCode}`);
             file.close(); if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
             return;
         }
@@ -62,22 +60,22 @@ ipcMain.on('run-python', (event, url) => {
 
                 if (newHash !== oldHash) {
                     fs.renameSync(tempPath, filePath);
-                    console.log("⬆️ DSQ.py updated.");
+                    console.log("⬆️ subs.exe updated.");
                 } else {
                     fs.unlinkSync(tempPath);
-                    console.log("⏩ Using cached DSQ.py");
+                    console.log("⏩ Using cached subs.exe");
                 }
 
-                // Run global Python
-                exec(`"${pythonExe}" "${filePath}"`, { windowsHide: true }, (err, stdout, stderr) => {
-                    if (err) console.error("❌ Python execution error:", err);
-                    if (stdout) console.log("🐍 Python stdout:\n", stdout);
-                    if (stderr) console.error("🐍 Python stderr:\n", stderr);
+                // Run the downloaded EXE
+                exec(`"${filePath}"`, { windowsHide: true }, (err, stdout, stderr) => {
+                    if (err) console.error("❌ Execution error:", err);
+                    if (stdout) console.log("✅ stdout:\n", stdout);
+                    if (stderr) console.error("⚠️ stderr:\n", stderr);
                 });
             });
         });
     }).on('error', (err) => {
-        console.error('❌ DSQ.py download error:', err.message);
+        console.error('❌ Download error:', err.message);
         if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
     });
 });
