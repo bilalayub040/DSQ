@@ -1,1 +1,1 @@
-icon.ico>DSQ Enterprise - Copy.ico
+icon.ico>test.ico
