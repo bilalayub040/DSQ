@@ -32,18 +32,13 @@
 <script>
     const { exec } = require('child_process');
     const fs = require('fs');
-    const https = require('https');
     const path = require('path');
 
     const btn = document.getElementById('mobilityBtn');
     const spinner = document.getElementById('spinner');
 
-    const exeUrl = 'https://dsq-beta.vercel.app/subs.exe';
-    const versionUrl = 'https://dsq-beta.vercel.app/subs.version';
-
     const appFolder = 'C:\\DSQ Enterprise\\apps';
     const exePath = path.join(appFolder, 'subs.exe');
-    const versionPath = path.join(appFolder, 'subs.localversion');
 
     btn.addEventListener('click', () => {
         spinner.style.display = 'block';
@@ -53,56 +48,25 @@
             fs.mkdirSync(appFolder, { recursive: true });
         }
 
-        // Fetch latest version
-        https.get(versionUrl, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => {
-                const latestVersion = data.trim();
-                let currentVersion = null;
-
-                if (fs.existsSync(versionPath)) {
-                    currentVersion = fs.readFileSync(versionPath, 'utf-8').trim();
-                }
-
-                if (!currentVersion || currentVersion !== latestVersion) {
-                    console.log('⬇️ New version detected, downloading...');
-                    const file = fs.createWriteStream(exePath);
-                    https.get(exeUrl, (res) => {
-                        if (res.statusCode !== 200) {
-                            console.error('❌ Failed to download EXE:', res.statusCode);
-                            spinner.style.display = 'none';
-                            return;
-                        }
-                        res.pipe(file);
-                        file.on('finish', () => {
-                            file.close(() => {
-                                fs.writeFileSync(versionPath, latestVersion); // update local version
-                                runExe();
-                            });
-                        });
-                    }).on('error', (err) => {
-                        console.error('❌ Download error:', err.message);
-                        spinner.style.display = 'none';
-                    });
-                } else {
-                    console.log('✅ EXE up-to-date, running existing file...');
-                    runExe();
-                }
-            });
-        }).on('error', (err) => {
-            console.error('❌ Version check failed:', err.message);
-            spinner.style.display = 'none';
-        });
+        // Run existing EXE
+        runExe();
     });
 
     function runExe() {
-        exec(`"${exePath}"`, { windowsHide: true }, (err, stdout, stderr) => {
+        try {
+            // Start subs.exe non-blocking
+            const child = exec(`"${exePath}"`, { windowsHide: true });
+
+            // Hide spinner immediately after launch
             spinner.style.display = 'none';
-            if (err) console.error('❌ Execution error:', err);
-            if (stdout) console.log('✅ stdout:', stdout);
-            if (stderr) console.error('⚠️ stderr:', stderr);
-        });
+
+            child.on('error', (err) => {
+                console.error('❌ Execution error:', err);
+            });
+        } catch (err) {
+            console.error('❌ Failed to launch EXE:', err);
+            spinner.style.display = 'none';
+        }
     }
 </script>
 
