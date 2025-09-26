@@ -1,1 +1,1 @@
-icon.ico, BO_emails.txt>DSQ Enterprise - Copy.ico
+icon.ico>DSQ Enterprise - Copy.ico
