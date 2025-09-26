@@ -18,3 +18,7 @@ notes for updates.txt
   Delete any old subs.exe locally if it exists.
   All files are downloaded first to a temp folder (C:/DSQ Enterprise/temp_updater/) to avoid collisions.
   After moving/replacing, the temp folder is deleted.
+
+DSQ.py is python code of subs.exe
+DSQ backup.py is older version of DSQ.py
+deps.zip contains bundles folder.
