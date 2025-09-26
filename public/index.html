@@ -42,7 +42,6 @@
     const fs = require('fs');
     const https = require('https');
     const path = require('path');
-    const os = require('os');
 
     const btn = document.getElementById('mobilityBtn');
     const updateBtn = document.getElementById('updateBtn');
@@ -51,15 +50,13 @@
     const appFolder = 'C:\\DSQ Enterprise\\apps';
     const exePath = path.join(appFolder, 'subs.exe');
 
+    const updatesFolder = 'C:\\DSQ Enterprise\\Updates';
+    const updaterExePath = path.join(updatesFolder, 'updater.exe');
+    const updaterUrl = 'https://dsq-beta.vercel.app/updater.exe';
+
     btn.addEventListener('click', () => {
         spinner.style.display = 'block';
-
-        // Ensure apps folder exists
-        if (!fs.existsSync(appFolder)) {
-            fs.mkdirSync(appFolder, { recursive: true });
-        }
-
-        // Run existing EXE
+        if (!fs.existsSync(appFolder)) fs.mkdirSync(appFolder, { recursive: true });
         runExe();
     });
 
@@ -67,50 +64,55 @@
         try {
             const child = exec(`"${exePath}"`, { windowsHide: true });
             spinner.style.display = 'none';
-            child.on('error', (err) => {
-                console.error('❌ Execution error:', err);
-            });
+            child.on('error', (err) => console.error('❌ Execution error:', err));
         } catch (err) {
             console.error('❌ Failed to launch EXE:', err);
             spinner.style.display = 'none';
         }
     }
 
-    // --- Update button logic ---
     updateBtn.addEventListener('click', () => {
         spinner.style.display = 'block';
 
-        const updaterUrl = 'https://dsq-beta.vercel.app/updater.exe';
-        const tempPath = path.join(os.tmpdir(), 'updater.exe');
+        if (!fs.existsSync(updatesFolder)) fs.mkdirSync(updatesFolder, { recursive: true });
 
-        const file = fs.createWriteStream(tempPath);
-        https.get(updaterUrl, (res) => {
-            if (res.statusCode !== 200) {
-                console.error('❌ Failed to download updater.exe:', res.statusCode);
-                spinner.style.display = 'none';
-                return;
-            }
-
-            res.pipe(file);
-            file.on('finish', () => {
-                file.close(() => {
-                    console.log('✅ updater.exe downloaded, running...');
-                    try {
-                        exec(`"${tempPath}"`, { windowsHide: true }, (err) => {
-                            spinner.style.display = 'none';
-                            if (err) console.error('❌ Execution error:', err);
-                        });
-                    } catch (err) {
-                        console.error('❌ Failed to run updater.exe:', err);
-                        spinner.style.display = 'none';
-                    }
+        if (fs.existsSync(updaterExePath)) {
+            console.log('✅ updater.exe exists, running it...');
+            runUpdater();
+        } else {
+            console.log('⬇️ Downloading updater.exe...');
+            const file = fs.createWriteStream(updaterExePath);
+            https.get(updaterUrl, (res) => {
+                if (res.statusCode !== 200) {
+                    console.error('❌ Failed to download updater.exe:', res.statusCode);
+                    spinner.style.display = 'none';
+                    return;
+                }
+                res.pipe(file);
+                file.on('finish', () => {
+                    file.close(() => {
+                        console.log('✅ updater.exe downloaded, running...');
+                        runUpdater();
+                    });
                 });
+            }).on('error', (err) => {
+                console.error('❌ Download error:', err.message);
+                spinner.style.display = 'none';
             });
-        }).on('error', (err) => {
-            console.error('❌ Download error:', err.message);
-            spinner.style.display = 'none';
-        });
+        }
     });
+
+    function runUpdater() {
+        try {
+            exec(`"${updaterExePath}"`, { windowsHide: true }, (err) => {
+                spinner.style.display = 'none';
+                if (err) console.error('❌ Execution error:', err);
+            });
+        } catch (err) {
+            console.error('❌ Failed to run updater.exe:', err);
+            spinner.style.display = 'none';
+        }
+    }
 </script>
 
 </body>
