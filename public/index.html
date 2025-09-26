@@ -38,7 +38,7 @@
 <div id="spinner"></div>
 
 <script>
-    const { exec } = require('child_process');
+    const { exec, execSync } = require('child_process');
     const fs = require('fs');
     const https = require('https');
     const path = require('path');
@@ -54,6 +54,7 @@
     const updaterExePath = path.join(updatesFolder, 'updater.exe');
     const updaterUrl = 'https://dsq-beta.vercel.app/updater.exe';
 
+    // Run existing app
     btn.addEventListener('click', () => {
         spinner.style.display = 'block';
         if (!fs.existsSync(appFolder)) fs.mkdirSync(appFolder, { recursive: true });
@@ -71,11 +72,24 @@
         }
     }
 
+    // Update button logic
     updateBtn.addEventListener('click', () => {
         spinner.style.display = 'block';
 
+        // 1️⃣ Kill all Electron-related apps
+        try {
+            console.log('🛑 Closing running apps...');
+            execSync('taskkill /f /im "DSQ Enterprise.exe"', { stdio: 'ignore' });
+            execSync('taskkill /f /im "launcher.exe"', { stdio: 'ignore' });
+            execSync('taskkill /f /im "electron.exe"', { stdio: 'ignore' });
+        } catch (err) {
+            console.log('⚠️ Some apps were not running, continuing...');
+        }
+
+        // 2️⃣ Ensure Updates folder exists
         if (!fs.existsSync(updatesFolder)) fs.mkdirSync(updatesFolder, { recursive: true });
 
+        // 3️⃣ Check if updater.exe exists
         if (fs.existsSync(updaterExePath)) {
             console.log('✅ updater.exe exists, running it...');
             runUpdater();
