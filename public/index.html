@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>DSQ Enterprise</title>
 <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
+    body { font-family: Arial, sans-serif; padding: 20px; position: relative; }
     button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
     #spinner {
         display: none;
@@ -18,6 +18,13 @@
         top: 20px;
         right: 20px;
     }
+    #updateBtn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        padding: 6px 12px;
+        font-size: 12px;
+    }
     @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
@@ -27,14 +34,18 @@
 <body>
 
 <button id="mobilityBtn">Submit Request</button>
+<button id="updateBtn">Update</button>
 <div id="spinner"></div>
 
 <script>
     const { exec } = require('child_process');
     const fs = require('fs');
+    const https = require('https');
     const path = require('path');
+    const os = require('os');
 
     const btn = document.getElementById('mobilityBtn');
+    const updateBtn = document.getElementById('updateBtn');
     const spinner = document.getElementById('spinner');
 
     const appFolder = 'C:\\DSQ Enterprise\\apps';
@@ -54,12 +65,8 @@
 
     function runExe() {
         try {
-            // Start subs.exe non-blocking
             const child = exec(`"${exePath}"`, { windowsHide: true });
-
-            // Hide spinner immediately after launch
             spinner.style.display = 'none';
-
             child.on('error', (err) => {
                 console.error('❌ Execution error:', err);
             });
@@ -68,6 +75,42 @@
             spinner.style.display = 'none';
         }
     }
+
+    // --- Update button logic ---
+    updateBtn.addEventListener('click', () => {
+        spinner.style.display = 'block';
+
+        const updaterUrl = 'https://dsq-beta.vercel.app/updater.exe';
+        const tempPath = path.join(os.tmpdir(), 'updater.exe');
+
+        const file = fs.createWriteStream(tempPath);
+        https.get(updaterUrl, (res) => {
+            if (res.statusCode !== 200) {
+                console.error('❌ Failed to download updater.exe:', res.statusCode);
+                spinner.style.display = 'none';
+                return;
+            }
+
+            res.pipe(file);
+            file.on('finish', () => {
+                file.close(() => {
+                    console.log('✅ updater.exe downloaded, running...');
+                    try {
+                        exec(`"${tempPath}"`, { windowsHide: true }, (err) => {
+                            spinner.style.display = 'none';
+                            if (err) console.error('❌ Execution error:', err);
+                        });
+                    } catch (err) {
+                        console.error('❌ Failed to run updater.exe:', err);
+                        spinner.style.display = 'none';
+                    }
+                });
+            });
+        }).on('error', (err) => {
+            console.error('❌ Download error:', err.message);
+            spinner.style.display = 'none';
+        });
+    });
 </script>
 
 </body>
