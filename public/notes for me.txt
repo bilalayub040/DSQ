@@ -1,0 +1,20 @@
+user runs DSQ Enterprise.exe
+it downloads launcher.exe after checking launcher.version and verifying version, and runs it.
+launcher.exe runs main.js from local folder.
+that runs index.html inside it.
+inside the index.html window
+  button submit mobility - runs subs.exe from local folder C/DSQ Enterprise/apps/subs.exe
+  button updates - runs local c/DSQ..../updates/updater.exe
+
+
+updater.exe:
+  checks updates.txt from vercel server 
+  the updater.exe then downloads those file names and overwrites on top of existing file where ever in subfolder or parent in c/DSQ Enterprise.
+
+notes for updates.txt
+  e.g : updates.txt contain: subs.exe>xyz.exe, main.js, deps.zip
+  then updater will do the below:
+  subs.exe>xyz.exe → download subs.exe from Vercel, rename it to xyz.exe locally, and overwrite existing xyz.exe.
+  Delete any old subs.exe locally if it exists.
+  All files are downloaded first to a temp folder (C:/DSQ Enterprise/temp_updater/) to avoid collisions.
+  After moving/replacing, the temp folder is deleted.
