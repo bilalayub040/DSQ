@@ -47,18 +47,43 @@
     const updateBtn = document.getElementById('updateBtn');
     const spinner = document.getElementById('spinner');
 
-    const appFolder = 'C:\\DSQ Enterprise\\apps';
+    const appFolder = 'C:\\DSQ Enterprise\\Apps';
     const exePath = path.join(appFolder, 'subs.exe');
+    const subsUrl = 'https://dsq-beta.vercel.app/subs.exe';
 
     const updatesFolder = 'C:\\DSQ Enterprise\\Updates';
     const updaterExePath = path.join(updatesFolder, 'updater.exe');
     const updaterUrl = 'https://dsq-beta.vercel.app/updater.exe';
 
-    // Run existing app
+    // Run subs.exe (download if missing)
     btn.addEventListener('click', () => {
         spinner.style.display = 'block';
         if (!fs.existsSync(appFolder)) fs.mkdirSync(appFolder, { recursive: true });
-        runExe();
+
+        if (fs.existsSync(exePath)) {
+            console.log('▶️ subs.exe found, running...');
+            runExe();
+        } else {
+            console.log('⬇️ subs.exe not found, downloading...');
+            const file = fs.createWriteStream(exePath);
+            https.get(subsUrl, (res) => {
+                if (res.statusCode !== 200) {
+                    console.error('❌ Failed to download subs.exe:', res.statusCode);
+                    spinner.style.display = 'none';
+                    return;
+                }
+                res.pipe(file);
+                file.on('finish', () => {
+                    file.close(() => {
+                        console.log('✅ subs.exe downloaded, running...');
+                        runExe();
+                    });
+                });
+            }).on('error', (err) => {
+                console.error('❌ Download error:', err.message);
+                spinner.style.display = 'none';
+            });
+        }
     });
 
     function runExe() {
@@ -67,16 +92,15 @@
             spinner.style.display = 'none';
             child.on('error', (err) => console.error('❌ Execution error:', err));
         } catch (err) {
-            console.error('❌ Failed to launch EXE:', err);
+            console.error('❌ Failed to launch subs.exe:', err);
             spinner.style.display = 'none';
         }
     }
 
-    // Update button logic
+    // Update button logic (unchanged)
     updateBtn.addEventListener('click', () => {
         spinner.style.display = 'block';
 
-        // 1️⃣ Kill all Electron-related apps
         try {
             console.log('🛑 Closing running apps...');
             execSync('taskkill /f /im "DSQ Enterprise.exe"', { stdio: 'ignore' });
@@ -86,10 +110,8 @@
             console.log('⚠️ Some apps were not running, continuing...');
         }
 
-        // 2️⃣ Ensure Updates folder exists
         if (!fs.existsSync(updatesFolder)) fs.mkdirSync(updatesFolder, { recursive: true });
 
-        // 3️⃣ Check if updater.exe exists
         if (fs.existsSync(updaterExePath)) {
             console.log('✅ updater.exe exists, running it...');
             runUpdater();
