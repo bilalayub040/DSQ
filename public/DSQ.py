@@ -549,15 +549,22 @@ class SubmissionTab(QWidget):
         self.preview_table.setRowCount(0)
         self.preview_table.horizontalHeader().setVisible(False)
         self.preview_table.verticalHeader().setVisible(False)
+
         acc_num = self._get_left_input_text("Account Number")
         acc_name = self._get_left_input_text("Account Name")
         agent_id = self._get_left_input_text("Agent ID")
+
         self.preview_table.resizeRowsToContents()
+
         bold_font = QFont(); bold_font.setBold(True)
         yellow_brush = QBrush(QColor("yellow"))
         black_brush = QBrush(QColor("black"))
 
-        # Row 0: titles
+        # Default brushes (white background + black text)
+        default_fg = QBrush(QColor("black"))
+        default_bg = QBrush(QColor("white"))
+
+        # --- Row 0: titles ---
         self.preview_table.setRowCount(3)
         for col, text in enumerate(["Account Number", "Account Name", "Agent ID"]):
             item = QTableWidgetItem(text)
@@ -566,10 +573,20 @@ class SubmissionTab(QWidget):
             item.setForeground(black_brush)
             self.preview_table.setItem(0, col, item)
 
+        # --- Row 1: account values (force default white/black) ---
         self.preview_table.setItem(1, 0, QTableWidgetItem(acc_num))
-        self.preview_table.setItem(1, 1, QTableWidgetItem(acc_name))
-        self.preview_table.setItem(1, 2, QTableWidgetItem(agent_id))
+        self.preview_table.item(1, 0).setForeground(default_fg)
+        self.preview_table.item(1, 0).setBackground(default_bg)
 
+        self.preview_table.setItem(1, 1, QTableWidgetItem(acc_name))
+        self.preview_table.item(1, 1).setForeground(default_fg)
+        self.preview_table.item(1, 1).setBackground(default_bg)
+
+        self.preview_table.setItem(1, 2, QTableWidgetItem(agent_id))
+        self.preview_table.item(1, 2).setForeground(default_fg)
+        self.preview_table.item(1, 2).setBackground(default_bg)
+
+        # --- Row 2: plan headers ---
         headers = ["Msisdns", "Simserials", "Plan", "Addon", "Promo", "Discount", "Spendlimit"]
         for c, h in enumerate(headers):
             item = QTableWidgetItem(h)
@@ -578,6 +595,7 @@ class SubmissionTab(QWidget):
             item.setForeground(black_brush)
             self.preview_table.setItem(2, c, item)
 
+        # --- Row 3+: plan data (force default white/black) ---
         row_idx = 3
         for plan in self.plan_widgets:
             ms_list = [s for s in plan.msisdns.toPlainText().splitlines() if s.strip()]
@@ -592,6 +610,14 @@ class SubmissionTab(QWidget):
                 self.preview_table.setItem(row_idx, 4, QTableWidgetItem(plan.promo.text()))
                 self.preview_table.setItem(row_idx, 5, QTableWidgetItem(plan.discount.currentText()))
                 self.preview_table.setItem(row_idx, 6, QTableWidgetItem("0.01"))
+
+                # Force default style (white background, black text)
+                for c in range(7):
+                    cell = self.preview_table.item(row_idx, c)
+                    if cell:
+                        cell.setForeground(default_fg)
+                        cell.setBackground(default_bg)
+
                 self.preview_table.setRowHeight(row_idx, 20)
                 row_idx += 1
 
