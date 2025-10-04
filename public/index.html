@@ -708,6 +708,127 @@ function renderPreview() {
 
 const updatePreviewBtn = document.getElementById("updatePreviewBtn");
 updatePreviewBtn.addEventListener("click", renderPreview);
+// --- Electron modules ---
+const fs = require("fs");
+const path = require("path");
+const { execFile } = require("child_process");
+
+// --- Submit button handler ---
+document.getElementById("submitBtn").addEventListener("click", () => {
+  const errors = [];
+
+  // --- Section A Validation ---
+  const requiredA = [
+    { label: "Account name", el: document.querySelector('[data-field="2"] input') },
+    { label: "Account number", el: document.querySelector('[data-field="3"] input') },
+    { label: "Agent ID", el: document.querySelector('[data-field="8"] input') },
+    { label: "Type", el: document.querySelector('[data-field="10"] select') }
+  ];
+  requiredA.forEach(f => { if (!f.el.value.trim()) errors.push(`Missing: ${f.label}`); });
+
+  // --- Section B Validation (visible fields only) ---
+  document.querySelectorAll('#section-b input:visible, #section-b select:visible').forEach(inp => {
+    if (inp.value.trim() === "") errors.push(`Missing: ${inp.previousSibling.textContent.trim()}`);
+  });
+
+  // --- Section C Validation (plans) ---
+  const plans = document.querySelectorAll(".plan");
+  if (plans.length === 0) {
+    errors.push("At least one plan required");
+  } else {
+    plans.forEach((plan, i) => {
+      const msisdns = plan.querySelector(".msisdns textarea").value.split("\n").filter(v => v.trim() !== "");
+      const sims = plan.querySelector(".simserials textarea").value.split("\n").filter(v => v.trim() !== "");
+      const planName = plan.querySelector(".plan-name input").value.trim();
+      if (!planName) errors.push(`Plan ${i + 1}: Missing plan name`);
+      if (msisdns.length === 0) errors.push(`Plan ${i + 1}: No MSISDNs`);
+      if (sims.length === 0) errors.push(`Plan ${i + 1}: No SIM serials`);
+    });
+  }
+
+  // --- Section D Validation ---
+  const toEmail = document.getElementById("toEmail").value.trim();
+  if (!toEmail) errors.push("Email To field is required");
+
+  // --- Attachments Validation ---
+  const files = document.getElementById("attachmentsInput").files;
+  if (!files || files.length === 0) errors.push("At least one attachment is required");
+
+  // --- Show draggable box if errors ---
+  if (errors.length > 0) {
+    showDraggableBox(errors);
+    return;
+  }
+
+  // --- If all good: write preview content to file ---
+  const previewHTML = document.getElementById("previewBox").innerHTML;
+  const outputDir = "C:\\DSQ Enterprise\\temp\\Submit";
+  const outputPath = path.join(outputDir, "to_submit.txt");
+
+  try {
+    if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
+    fs.writeFileSync(outputPath, previewHTML, "utf-8");
+    console.log("✅ Preview saved to:", outputPath);
+
+    // --- Run send.exe ---
+    const exePath = "C:\\DSQ Enterprise\\app\\send.exe";
+    execFile(exePath, (err) => {
+      if (err) {
+        showDraggableBox([`Failed to run send.exe: ${err.message}`]);
+      } else {
+        showDraggableBox(["✅ Submission successful!"]);
+      }
+    });
+  } catch (err) {
+    showDraggableBox([`Error writing file: ${err.message}`]);
+  }
+});
+
+// --- Function: draggable notification box ---
+function showDraggableBox(messages) {
+  let box = document.getElementById("notifyBox");
+  if (box) box.remove();
+
+  box = document.createElement("div");
+  box.id = "notifyBox";
+  box.innerHTML = `
+    <div id="notifyHeader" style="cursor:move; background:#444; color:#fff; padding:6px; font-weight:bold;">
+      Notification
+      <span id="closeNotify" style="float:right; cursor:pointer;">✖</span>
+    </div>
+    <div style="padding:8px; background:#f5f5f5; font-size:12px; max-height:200px; overflow:auto;">
+      ${messages.map(m => `<div>• ${m}</div>`).join("")}
+    </div>
+  `;
+  Object.assign(box.style, {
+    position: "fixed",
+    top: "100px",
+    left: "100px",
+    width: "320px",
+    border: "1px solid #888",
+    boxShadow: "2px 2px 8px rgba(0,0,0,0.2)",
+    zIndex: 9999,
+    background: "#fff"
+  });
+  document.body.appendChild(box);
+
+  document.getElementById("closeNotify").onclick = () => box.remove();
+
+  // --- Make it draggable ---
+  const header = document.getElementById("notifyHeader");
+  let offsetX = 0, offsetY = 0, dragging = false;
+  header.onmousedown = e => {
+    dragging = true;
+    offsetX = e.clientX - box.offsetLeft;
+    offsetY = e.clientY - box.offsetTop;
+  };
+  document.onmouseup = () => (dragging = false);
+  document.onmousemove = e => {
+    if (!dragging) return;
+    box.style.left = e.clientX - offsetX + "px";
+    box.style.top = e.clientY - offsetY + "px";
+  };
+}
 
 </script>
 </body>
