@@ -774,7 +774,7 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
   const toCcCombined = [toEmail.value.trim()].concat(ccEmail, othersEmail).filter(x=>x).join(", ");
 
   // --- Attachments List ---
-  const attachmentsText = attachmentFiles.map(f => f.name).join("\n");
+  const attachmentsText = attachmentFiles.map(f => f.path || f.name).join("\n");
 
   // --- Helper to extract table by heading ---
   function extractTable(content, heading) {
@@ -891,3 +891,4 @@ Hi Team<br><br>Please action the below Account movement request:<br>${movementSt
 </script>
 </body>
 </html>
+
