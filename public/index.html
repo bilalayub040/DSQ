@@ -456,7 +456,7 @@ function renderAttachments(){
     const item=document.createElement("div");
     item.className="attachment-item";
     const nameSpan=document.createElement("span");
-    nameSpan.innerText=`${index+1}. ${file.name} (${formatFileSize(file.size)})`;
+    nameSpan.innerText = `${index + 1}. ${file.path || file.name} (${formatFileSize(file.size)})`;
     item.appendChild(nameSpan);
     const delBtn=document.createElement("button");
     delBtn.innerText="−";
@@ -466,7 +466,22 @@ function renderAttachments(){
     attachmentsPreview.appendChild(item);
   });
 }
-attachmentsInput.addEventListener("change",()=>{ attachmentFiles.push(...Array.from(attachmentsInput.files)); renderAttachments(); attachmentsInput.value=""; });
+attachmentsInput.addEventListener("change", () => {
+  const files = Array.from(attachmentsInput.files);
+  const { path: fake } = files[0] || {};
+
+  // If we are in Electron, `file.path` is accessible
+  files.forEach(f => {
+    attachmentFiles.push({
+      name: f.name,
+      size: f.size,
+      path: f.path || "(path unavailable)",
+    });
+  });
+
+  renderAttachments();
+  attachmentsInput.value = "";
+});
 clearAttachments.addEventListener("click",()=>{ attachmentFiles=[]; renderAttachments(); });
 
 // --- Preview ---
