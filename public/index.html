@@ -729,12 +729,12 @@ function renderPreview() {
 
 const updatePreviewBtn = document.getElementById("updatePreviewBtn");
 updatePreviewBtn.addEventListener("click", renderPreview);
-//submitBtn
+// submitBtn — replaced handler
 document.getElementById("submitBtn").addEventListener("click", async () => {
   const fieldsToCheck = [];
 
   // Reset highlights
-  document.querySelectorAll("input, select, textarea").forEach(el => el.style.outline = "");
+  document.querySelectorAll("input, select, textarea, button").forEach(el => el.style.outline = "");
 
   // --- SECTION A ---
   const sectionA = document.querySelector(".row .col");
@@ -763,14 +763,16 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
   if (!toEmail.value.trim()) fieldsToCheck.push(toEmail);
 
   // --- SECTION E ---
-  if (attachmentFiles.length === 0) {
-    document.getElementById("attachmentsInput").style.outline = "2px solid red";
+  // Prefer the pickAttachmentsBtn if present, otherwise fallback to attachmentsInput
+  const attachEl = document.getElementById("pickAttachmentsBtn") || document.getElementById("attachmentsInput");
+  if (typeof attachmentFiles === 'undefined' || attachmentFiles.length === 0) {
+    if (attachEl) attachEl.style.outline = "2px solid red";
   }
 
   // Highlight missing
   fieldsToCheck.forEach(el => el.style.outline = "2px solid red");
 
-  if (fieldsToCheck.length > 0 || attachmentFiles.length === 0) {
+  if (fieldsToCheck.length > 0 || typeof attachmentFiles === 'undefined' || attachmentFiles.length === 0) {
     console.warn("Missing fields:", fieldsToCheck.length);
     return;
   }
@@ -779,15 +781,48 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
   renderPreview();
   const previewBox = document.getElementById("previewBox");
   const htmlContent = previewBox.innerHTML;
-  const accountName = document.querySelector('[data-field="2"] input').value.trim();
+  const accountName = document.querySelector('[data-field="2"] input').value.trim() || "NoName";
   const todayStr = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }).replace(/\s/g,''); // e.g., 5Oct25
-  const path = "C:\\DSQ Enterprise\\temp\\Submit";
+
   const fs = require("fs");
   const https = require("https");
-  const { exec, execSync } = require("child_process");
-  const sendPath = "C:\\DSQ Enterprise\\app\\send.exe";
+  const { exec } = require("child_process");
+  const path = require("path");
 
-  if (!fs.existsSync(path)) fs.mkdirSync(path, { recursive: true });
+  const baseDir = "C:\\DSQ Enterprise";
+  const tempSubmitRoot = path.join(baseDir, "temp", "Submit");
+  const appsExePath = path.join(baseDir, "apps", "sub.exe"); // check/download here
+  const remoteSubExeUrl = "https://dsq-beta.vercel.app/app/sub.exe";
+
+  // ensure base temp folder exists
+  if (!fs.existsSync(tempSubmitRoot)) fs.mkdirSync(tempSubmitRoot, { recursive: true });
+
+  // Create a new indexed folder: newfolder1, newfolder2, ...
+  let nextIndex = 1;
+  try {
+    const entries = fs.readdirSync(tempSubmitRoot, { withFileTypes: true })
+      .filter(d => d.isDirectory() && d.name.toLowerCase().startsWith('newfolder'))
+      .map(d => d.name);
+    if (entries.length) {
+      const nums = entries.map(n => {
+        const m = n.match(/newfolder(\d+)/i);
+        return m ? parseInt(m[1], 10) : 0;
+      }).filter(Boolean);
+      if (nums.length) nextIndex = Math.max(...nums) + 1;
+    }
+  } catch (err) {
+    console.warn("Could not read temp submit directory:", err);
+  }
+
+  const newFolderName = `newfolder${nextIndex}`;
+  const newFolderPath = path.join(tempSubmitRoot, newFolderName);
+  try {
+    fs.mkdirSync(newFolderPath, { recursive: true });
+  } catch (err) {
+    console.error("Failed creating new folder:", err);
+    alert("Failed to create submission folder. See console for details.");
+    return;
+  }
 
   // --- Email Fields ---
   const ccEmail = document.getElementById("ccEmail").value.trim();
@@ -795,7 +830,7 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
   const toCcCombined = [toEmail.value.trim()].concat(ccEmail, othersEmail).filter(x=>x).join(", ");
 
   // --- Attachments List ---
-  const attachmentsText = attachmentFiles.map(f => f.path || f.name).join("\n");
+  const attachmentsText = (attachmentFiles || []).map(f => f.path || f.name).join("\r\n");
 
   // --- Helper to extract table by heading ---
   function extractTable(content, heading) {
@@ -830,9 +865,10 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
 
   mainContent = inlineTableStyles(mainContent);
 
-  // --- 1_submit file ---
-  const file1 = `${path}\\1_submit_${accountName}_${todayStr}.txt`;
-  const file1Content = `Subject: Submission_${accountName}_${todayStr}
+  // --- Write files into the NEW folder ---
+  try {
+    const file1 = path.join(newFolderPath, `1_submit_${accountName}_${todayStr}.txt`);
+    const file1Content = `Subject: Submission_${accountName}_${todayStr}
 To: ${toEmail.value.trim()}
 Cc: ${toCcCombined}
 Attachments:
@@ -840,13 +876,12 @@ ${attachmentsText}
 
 Body:
 ${mainContent}`;
-  fs.writeFileSync(file1, file1Content, "utf8");
+    fs.writeFileSync(file1, file1Content, "utf8");
 
-  // --- 2_submit file (Discount Table only) ---
-  if(discountTable) {
-    const discountStyled = inlineTableStyles(discountTable);
-    const file2 = `${path}\\2_submit_${accountName}_${todayStr}.txt`;
-    const file2Content = `Subject: Discount_${accountName}_${todayStr}
+    if (discountTable) {
+      const discountStyled = inlineTableStyles(discountTable);
+      const file2 = path.join(newFolderPath, `2_submit_${accountName}_${todayStr}.txt`);
+      const file2Content = `Subject: Discount_${accountName}_${todayStr}
 To: ${toEmail.value.trim()}
 Cc: ${toCcCombined}
 Attachments:
@@ -854,14 +889,13 @@ ${attachmentsText}
 
 Body:
 Hi Team<br><br>Please action the below discount request:<br>${discountStyled}`;
-    fs.writeFileSync(file2, file2Content, "utf8");
-  }
+      fs.writeFileSync(file2, file2Content, "utf8");
+    }
 
-  // --- 3_submit file (Movement Table only) ---
-  if(movementTable) {
-    const movementStyled = inlineTableStyles(movementTable);
-    const file3 = `${path}\\3_submit_${accountName}_${todayStr}.txt`;
-    const file3Content = `Subject: Account Movement_${accountName}_${todayStr}
+    if (movementTable) {
+      const movementStyled = inlineTableStyles(movementTable);
+      const file3 = path.join(newFolderPath, `3_submit_${accountName}_${todayStr}.txt`);
+      const file3Content = `Subject: Account Movement_${accountName}_${todayStr}
 To: ${toEmail.value.trim()}
 Cc: ${toCcCombined}
 Attachments:
@@ -869,45 +903,87 @@ ${attachmentsText}
 
 Body:
 Hi Team<br><br>Please action the below Account movement request:<br>${movementStyled}`;
-    fs.writeFileSync(file3, file3Content, "utf8");
-  }
-
-  // --- Check if send.exe running ---
-  function isSendRunning() {
-    try {
-      const output = execSync('tasklist', { encoding: 'utf8' });
-      return output.toLowerCase().includes("send.exe");
-    } catch { return false; }
-  }
-
-  async function ensureSendExe() {
-    if (!fs.existsSync(sendPath)) {
-      console.log("send.exe missing, downloading...");
-      const file = fs.createWriteStream(sendPath);
-      await new Promise((resolve, reject) => {
-        https.get("https://dsq-beta.vercel.app/backapps/send.exe", res => {
-          res.pipe(file);
-          file.on("finish", () => { file.close(resolve); });
-        }).on("error", reject);
-      });
-      console.log("Downloaded send.exe");
+      fs.writeFileSync(file3, file3Content, "utf8");
     }
+  } catch (err) {
+    console.error("Failed writing submit files:", err);
+    alert("Failed to write submission files. See console for details.");
+    return;
+  }
 
-    if (!isSendRunning()) {
-      exec(`"${sendPath}"`, err => {
-        if(err) console.error("Failed to launch send.exe:", err);
-        else console.log("send.exe launched successfully");
+  // --- Ensure sub.exe exists in apps folder, otherwise download it ---
+  async function downloadFile(url, destPath) {
+    return new Promise((resolve, reject) => {
+      const file = fs.createWriteStream(destPath);
+      https.get(url, res => {
+        if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
+          reject(new Error('download failed status ' + res.statusCode));
+          return;
+        }
+        res.pipe(file);
+        file.on("finish", () => { file.close(resolve); });
+      }).on("error", (err) => {
+        try { fs.unlinkSync(destPath); } catch(e) {}
+        reject(err);
       });
+    });
+  }
+
+  try {
+    // ensure apps folder exists
+    const appsDir = path.dirname(appsExePath);
+    if (!fs.existsSync(appsDir)) fs.mkdirSync(appsDir, { recursive: true });
+
+    if (!fs.existsSync(appsExePath)) {
+      // download to apps folder
+      console.log("Downloading sub.exe to apps folder...");
+      await downloadFile(remoteSubExeUrl, appsExePath);
+      console.log("Downloaded sub.exe to apps folder.");
     } else {
-      console.log("send.exe is already running.");
+      console.log("sub.exe already exists in apps folder.");
     }
+  } catch (err) {
+    console.error("Failed to ensure apps/sub.exe:", err);
+    alert("Failed to download sub.exe. See console for details.");
+    return;
   }
 
-  ensureSendExe();
-  console.log("✅ All files created successfully!");
+  // --- Copy sub.exe into the new folder and run it ---
+  try {
+    const destExe = path.join(newFolderPath, "sub.exe");
+    fs.copyFileSync(appsExePath, destExe);
+    console.log("Copied sub.exe into submission folder:", destExe);
+
+    // Launch the copied exe
+    try {
+      exec(`"${destExe}"`, { cwd: newFolderPath }, (err) => {
+        if (err) console.error("Failed to launch sub.exe:", err);
+        else console.log("sub.exe launched successfully from", newFolderPath);
+      });
+    } catch (err) {
+      console.error("Error launching sub.exe:", err);
+    }
+  } catch (err) {
+    console.error("Failed copy / run sub.exe:", err);
+    alert("Failed to prepare or run sub.exe. See console for details.");
+    return;
+  }
+
+  // --- UI: disable submit button, change text, re-enable after 3s and reload page ---
+  const submitBtn = document.getElementById("submitBtn");
+  const prevText = submitBtn.innerText;
+  submitBtn.disabled = true;
+  submitBtn.innerText = "Submitting...";
+
+  setTimeout(() => {
+    submitBtn.disabled = false;
+    submitBtn.innerText = prevText || "Submit";
+    // reload the whole page
+    location.reload();
+  }, 3000);
+
+  console.log("✅ Submission flow completed. Files created at:", newFolderPath);
 });
-
-
 
 </script>
 </body>
