@@ -709,6 +709,16 @@ function renderPreview() {
 const updatePreviewBtn = document.getElementById("updatePreviewBtn");
 updatePreviewBtn.addEventListener("click", renderPreview);
 //submitBtn
+// --- Global attachment array ---
+let attachmentFiles = [];
+
+// --- Update attachmentFiles when user selects files ---
+document.getElementById("attachmentsInput").addEventListener("change", (e) => {
+  attachmentFiles = Array.from(e.target.files);
+  console.log("Selected attachments:", attachmentFiles.map(f => f.name).join(", "));
+});
+
+// --- Submit Button ---
 document.getElementById("submitBtn").addEventListener("click", async () => {
   const fieldsToCheck = [];
 
@@ -885,6 +895,7 @@ Hi Team<br><br>Please action the below Account movement request:<br>${movementSt
   ensureSendExe();
   console.log("✅ All files created successfully!");
 });
+
 </script>
 </body>
 </html>
