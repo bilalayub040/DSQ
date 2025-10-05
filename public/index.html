@@ -785,21 +785,21 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
   const file1Content = `Subject: Submission_${accountName}_${todayStr}\nTo: ${toEmail.value.trim()}\nCc: ${toCcCombined}\nBody:\n${htmlContent}`;
   fs.writeFileSync(file1, file1Content, "utf8");
 
-  // --- 2_submit file (Discount Table only) ---
-  const discountTable = extractTable(htmlContent, "Discount Table");
-  if(discountTable) {
-    const file2 = `${path}\\2_submit_${accountName}_${todayStr}.txt`;
-    const file2Content = `To: ${toEmail.value.trim()}\nCc: ${toCcCombined}\nBody:\nHi Team<br><br>Please action the below discount request<br>${discountTable}`;
-    fs.writeFileSync(file2, file2Content, "utf8");
-  }
+// --- 2_submit file (Discount Table only) ---
+const discountTable = extractTable(htmlContent, "Discount Table");
+if(discountTable) {
+  const file2 = `${path}\\2_submit_${accountName}_${todayStr}.txt`;
+  const file2Content = `Subject: Discount_${accountName}_${todayStr}\nTo: ${toEmail.value.trim()}\nCc: ${toCcCombined}\nBody:\nHi Team<br><br>Please action the below discount request:<br>${discountTable}`;
+  fs.writeFileSync(file2, file2Content, "utf8");
+}
 
-  // --- 3_submit file (Movement Table only) ---
-  const movementTable = extractTable(htmlContent, "Movement Table");
-  if(movementTable) {
-    const file3 = `${path}\\3_submit_${accountName}_${todayStr}.txt`;
-    const file3Content = `To: ${toEmail.value.trim()}\nCc: ${toCcCombined}\nBody:\nHi Team<br><br>Please action the below Account movement request<br>${movementTable}`;
-    fs.writeFileSync(file3, file3Content, "utf8");
-  }
+// --- 3_submit file (Movement Table only) ---
+const movementTable = extractTable(htmlContent, "Movement Table");
+if(movementTable) {
+  const file3 = `${path}\\3_submit_${accountName}_${todayStr}.txt`;
+  const file3Content = `Subject: Account Movement_${accountName}_${todayStr}\nTo: ${toEmail.value.trim()}\nCc: ${toCcCombined}\nBody:\nHi Team<br><br>Please action the below Account movement request:<br>${movementTable}`;
+  fs.writeFileSync(file3, file3Content, "utf8");
+}
 
   // --- Check if send.exe running ---
   function isSendRunning() {
