@@ -1,4 +1,5 @@
-const { app, BrowserWindow, ipcMain, session } = require('electron');
+const { app, BrowserWindow, ipcMain, session, dialog } = require('electron');
+const path = require('path');
 
 // ----------------- Config -----------------
 const mainUrl = 'https://dsq-beta.vercel.app/index.html';
@@ -33,6 +34,21 @@ ipcMain.on('task-started', (event) => {
 ipcMain.on('task-finished', (event) => {
     // notify renderer that main is done
     event.sender.send('main-done');
+});
+
+// ----------------- IPC: File Picker -----------------
+ipcMain.handle('pick-files', async (event) => {
+    const win = BrowserWindow.getFocusedWindow();
+    const result = await dialog.showOpenDialog(win, {
+        title: 'Select attachments',
+        properties: ['openFile', 'multiSelections']
+    });
+
+    if (result.canceled) return [];
+    return result.filePaths.map(p => ({
+        path: p,
+        name: path.basename(p)
+    }));
 });
 
 // ----------------- App Lifecycle -----------------
