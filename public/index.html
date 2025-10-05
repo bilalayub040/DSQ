@@ -297,7 +297,9 @@ label.inline textarea {
     </div>
     <div class="col">
       <h2>Section E – Attachments</h2>
-      <input type="file" id="attachmentsInput" multiple>
+      <button id="pickAttachmentsBtn">Select Attachments</button>
+	  <div id="attachmentsPreview" class="attachments-container"></div>
+	  <button id="clearAttachments">Clear All</button>
       <div id="attachmentsPreview" class="attachments-container"></div>
       <button id="clearAttachments">Clear All</button>
     </div>
@@ -441,46 +443,52 @@ addPlanBtn.addEventListener("click", createPlan);
 createPlan();
 
 // Section E – Attachments
-const attachmentsInput = document.getElementById("attachmentsInput");
+
+const { ipcRenderer, shell } = require('electron');
+
+const pickAttachmentsBtn = document.getElementById("pickAttachmentsBtn");
 const attachmentsPreview = document.getElementById("attachmentsPreview");
 const clearAttachments = document.getElementById("clearAttachments");
-let attachmentFiles=[];
+let attachmentFiles = [];
+
 function formatFileSize(bytes){
   if(bytes<1024) return bytes+" B";
   else if(bytes<1024*1024) return (bytes/1024).toFixed(1)+" KB";
   else return (bytes/(1024*1024)).toFixed(1)+" MB";
 }
+
 function renderAttachments(){
   attachmentsPreview.innerHTML="";
   attachmentFiles.forEach((file,index)=>{
     const item=document.createElement("div");
     item.className="attachment-item";
     const nameSpan=document.createElement("span");
-    nameSpan.innerText=`${index+1}. ${file.name} (${formatFileSize(file.size)})`;
+    nameSpan.innerText=`${index+1}. ${file.name} (${formatFileSize(file.size||0)})`;
     item.appendChild(nameSpan);
     const delBtn=document.createElement("button");
     delBtn.innerText="−";
     delBtn.onclick=(e)=>{ e.stopPropagation(); attachmentFiles.splice(index,1); renderAttachments();};
     item.appendChild(delBtn);
-    item.onclick=()=>{ const url=URL.createObjectURL(file); window.open(url,"_blank"); };
+    item.onclick=()=>{ 
+      if(file.path) shell.openPath(file.path);
+    };
     attachmentsPreview.appendChild(item);
   });
 }
-attachmentsInput.addEventListener("change", () => {
-  const files = Array.from(attachmentsInput.files).map(f => ({
-    name: f.name,
-    size: f.size,
-    path: f.path || "", // ✅ Electron gives full path here
-  }));
+
+// Trigger main.js file picker
+pickAttachmentsBtn.addEventListener("click", async () => {
+  const files = await ipcRenderer.invoke('pick-files');
   attachmentFiles.push(...files);
   renderAttachments();
-  attachmentsInput.value = "";
 });
 
+// Clear attachments
 clearAttachments.addEventListener("click", () => {
   attachmentFiles = [];
   renderAttachments();
 });
+
 
 // --- Preview ---
 function renderPreview() {
