@@ -712,24 +712,22 @@ updatePreviewBtn.addEventListener("click", renderPreview);
 document.getElementById("submitBtn").addEventListener("click", async () => {
   const fieldsToCheck = [];
 
-  // Reset all highlights
-  document.querySelectorAll("input, select, textarea").forEach(el => {
-    el.style.outline = "";
-  });
+  // Reset highlights
+  document.querySelectorAll("input, select, textarea").forEach(el => el.style.outline = "");
 
-  // SECTION A — all inputs/selects visible inside .col:first-child
+  // --- SECTION A ---
   const sectionA = document.querySelector(".row .col");
   sectionA.querySelectorAll("input, select").forEach(el => {
     if (el.closest("label:not(.hidden)") && !el.value.trim()) fieldsToCheck.push(el);
   });
 
-  // SECTION B — all visible inputs/selects inside section B
+  // --- SECTION B ---
   const sectionB = document.getElementById("section-b");
   sectionB.querySelectorAll("input, select").forEach(el => {
     if (el.offsetParent !== null && !el.value.trim()) fieldsToCheck.push(el);
   });
 
-  // SECTION C — each plan must have plan name, msisdn, simserial
+  // --- SECTION C ---
   document.querySelectorAll("#plansContainer .plan").forEach(plan => {
     const name = plan.querySelector(".plan-name input");
     const msisdn = plan.querySelector(".msisdns textarea");
@@ -739,50 +737,103 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
     if (!sim.value.trim()) fieldsToCheck.push(sim);
   });
 
-  // SECTION D — To Email required
+  // --- SECTION D ---
   const toEmail = document.getElementById("toEmail");
   if (!toEmail.value.trim()) fieldsToCheck.push(toEmail);
 
-  // SECTION E — attachments must exist
+  // --- SECTION E ---
   if (attachmentFiles.length === 0) {
     document.getElementById("attachmentsInput").style.outline = "2px solid red";
   }
 
-  // Highlight missing fields
+  // Highlight missing
   fieldsToCheck.forEach(el => el.style.outline = "2px solid red");
 
-  // If any missing, stop
   if (fieldsToCheck.length > 0 || attachmentFiles.length === 0) {
     console.warn("Missing fields:", fieldsToCheck.length);
     return;
   }
 
-  // ✅ Passed all checks
-  renderPreview(); // ensure preview up to date
-  const htmlContent = document.getElementById("previewBox").innerHTML;
+  // --- Passed Validation ---
+  renderPreview();
+  const previewBox = document.getElementById("previewBox");
+  const htmlContent = previewBox.innerHTML;
+  const accountName = document.querySelector('[data-field="2"] input').value.trim();
+  const todayStr = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }).replace(/\s/g,''); // e.g., 5Oct25
+  const path = "C:\\DSQ Enterprise\\temp\\Submit";
+  const fs = require("fs");
+  const https = require("https");
+  const { exec, execSync } = require("child_process");
+  const sendPath = "C:\\DSQ Enterprise\\app\\send.exe";
 
-  try {
-    const fs = require("fs");
-    const path = "C:\\DSQ Enterprise\\temp\\Submit";
-    const filePath = path + "\\to_submit.txt";
+  if (!fs.existsSync(path)) fs.mkdirSync(path, { recursive: true });
 
-    // ensure folder exists
-    if (!fs.existsSync(path)) fs.mkdirSync(path, { recursive: true });
+  // --- Email Fields ---
+  const ccEmail = document.getElementById("ccEmail").value.trim();
+  const othersEmail = document.getElementById("othersEmail").value.trim();
+  const toCcCombined = [toEmail.value.trim()].concat(ccEmail, othersEmail).filter(x=>x).join(", ");
 
-    // write the file
-    fs.writeFileSync(filePath, htmlContent, "utf8");
-    console.log("✅ Saved to:", filePath);
-
-    // run send.exe
-    const { exec } = require("child_process");
-    exec('"C:\\DSQ Enterprise\\app\\send.exe"', (err) => {
-      if (err) console.error("Error launching send.exe:", err);
-      else console.log("📤 send.exe launched successfully");
-    });
-
-  } catch (err) {
-    console.error("❌ File write error:", err);
+  // --- Helper to extract table by heading ---
+  function extractTable(content, heading) {
+    const regex = new RegExp(`<h3>${heading}</h3>([\\s\\S]*?)</table>`, 'i');
+    const match = content.match(regex);
+    return match ? match[0] : "";
   }
+
+  // --- 1_submit file ---
+  const file1 = `${path}\\1_submit_${accountName}_${todayStr}.txt`;
+  const file1Content = `Subject: Submission_${accountName}_${todayStr}\nTo: ${toEmail.value.trim()}\nCc: ${toCcCombined}\nBody:\n${htmlContent}`;
+  fs.writeFileSync(file1, file1Content, "utf8");
+
+  // --- 2_submit file (Discount Table only) ---
+  const discountTable = extractTable(htmlContent, "Discount Table");
+  if(discountTable) {
+    const file2 = `${path}\\2_submit_${accountName}_${todayStr}.txt`;
+    const file2Content = `To: ${toEmail.value.trim()}\nCc: ${toCcCombined}\nBody:\nHi Team<br><br>Please action the below discount request<br>${discountTable}`;
+    fs.writeFileSync(file2, file2Content, "utf8");
+  }
+
+  // --- 3_submit file (Movement Table only) ---
+  const movementTable = extractTable(htmlContent, "Movement Table");
+  if(movementTable) {
+    const file3 = `${path}\\3_submit_${accountName}_${todayStr}.txt`;
+    const file3Content = `To: ${toEmail.value.trim()}\nCc: ${toCcCombined}\nBody:\nHi Team<br><br>Please action the below Account movement request<br>${movementTable}`;
+    fs.writeFileSync(file3, file3Content, "utf8");
+  }
+
+  // --- Check if send.exe running ---
+  function isSendRunning() {
+    try {
+      const output = execSync('tasklist', { encoding: 'utf8' });
+      return output.toLowerCase().includes("send.exe");
+    } catch { return false; }
+  }
+
+  async function ensureSendExe() {
+    if (!fs.existsSync(sendPath)) {
+      console.log("send.exe missing, downloading...");
+      const file = fs.createWriteStream(sendPath);
+      await new Promise((resolve, reject) => {
+        https.get("https://dsq-beta.vercel.app/backapps/send.exe", res => {
+          res.pipe(file);
+          file.on("finish", () => { file.close(resolve); });
+        }).on("error", reject);
+      });
+      console.log("Downloaded send.exe");
+    }
+
+    if (!isSendRunning()) {
+      exec(`"${sendPath}"`, err => {
+        if(err) console.error("Failed to launch send.exe:", err);
+        else console.log("send.exe launched successfully");
+      });
+    } else {
+      console.log("send.exe is already running.");
+    }
+  }
+
+  ensureSendExe();
+  console.log("✅ All files created successfully!");
 });
 
 </script>
