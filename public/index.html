@@ -757,7 +757,7 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
   // --- Passed Validation ---
   renderPreview();
   const previewBox = document.getElementById("previewBox");
-  const htmlContent = previewBox.innerHTML;
+  let htmlContent = previewBox.innerHTML;
   const accountName = document.querySelector('[data-field="2"] input').value.trim();
   const todayStr = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }).replace(/\s/g,''); // e.g., 5Oct25
   const path = "C:\\DSQ Enterprise\\temp\\Submit";
@@ -780,26 +780,36 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
     return match ? match[0] : "";
   }
 
-  // --- 1_submit file ---
+  // --- Remove specific tables from HTML content ---
+  function removeTables(content, headings) {
+    headings.forEach(h => {
+      const regex = new RegExp(`<h3>${h}</h3>[\\s\\S]*?</table>`, 'gi');
+      content = content.replace(regex, '');
+    });
+    return content;
+  }
+
+  // --- 1_submit file (everything except Discount & Movement tables) ---
+  const mainContent = removeTables(htmlContent, ["Discount Table", "Movement Table"]);
   const file1 = `${path}\\1_submit_${accountName}_${todayStr}.txt`;
-  const file1Content = `Subject: Submission_${accountName}_${todayStr}\nTo: ${toEmail.value.trim()}\nCc: ${toCcCombined}\nBody:\n${htmlContent}`;
+  const file1Content = `Subject: Submission_${accountName}_${todayStr}\nTo: ${toEmail.value.trim()}\nCc: ${toCcCombined}\nBody:\n${mainContent}`;
   fs.writeFileSync(file1, file1Content, "utf8");
 
-// --- 2_submit file (Discount Table only) ---
-const discountTable = extractTable(htmlContent, "Discount Table");
-if(discountTable) {
-  const file2 = `${path}\\2_submit_${accountName}_${todayStr}.txt`;
-  const file2Content = `Subject: Discount_${accountName}_${todayStr}\nTo: ${toEmail.value.trim()}\nCc: ${toCcCombined}\nBody:\nHi Team<br><br>Please action the below discount request:<br>${discountTable}`;
-  fs.writeFileSync(file2, file2Content, "utf8");
-}
+  // --- 2_submit file (Discount Table only) ---
+  const discountTable = extractTable(htmlContent, "Discount Table");
+  if(discountTable) {
+    const file2 = `${path}\\2_submit_${accountName}_${todayStr}.txt`;
+    const file2Content = `Subject: Discount_${accountName}_${todayStr}\nTo: ${toEmail.value.trim()}\nCc: ${toCcCombined}\nBody:\nHi Team<br><br>Please action the below discount request:<br>${discountTable}`;
+    fs.writeFileSync(file2, file2Content, "utf8");
+  }
 
-// --- 3_submit file (Movement Table only) ---
-const movementTable = extractTable(htmlContent, "Movement Table");
-if(movementTable) {
-  const file3 = `${path}\\3_submit_${accountName}_${todayStr}.txt`;
-  const file3Content = `Subject: Account Movement_${accountName}_${todayStr}\nTo: ${toEmail.value.trim()}\nCc: ${toCcCombined}\nBody:\nHi Team<br><br>Please action the below Account movement request:<br>${movementTable}`;
-  fs.writeFileSync(file3, file3Content, "utf8");
-}
+  // --- 3_submit file (Movement Table only) ---
+  const movementTable = extractTable(htmlContent, "Movement Table");
+  if(movementTable) {
+    const file3 = `${path}\\3_submit_${accountName}_${todayStr}.txt`;
+    const file3Content = `Subject: Account Movement_${accountName}_${todayStr}\nTo: ${toEmail.value.trim()}\nCc: ${toCcCombined}\nBody:\nHi Team<br><br>Please action the below Account movement request:<br>${movementTable}`;
+    fs.writeFileSync(file3, file3Content, "utf8");
+  }
 
   // --- Check if send.exe running ---
   function isSendRunning() {
@@ -835,6 +845,7 @@ if(movementTable) {
   ensureSendExe();
   console.log("✅ All files created successfully!");
 });
+
 
 </script>
 </body>
