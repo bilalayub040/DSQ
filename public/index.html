@@ -708,6 +708,7 @@ function renderPreview() {
 
 const updatePreviewBtn = document.getElementById("updatePreviewBtn");
 updatePreviewBtn.addEventListener("click", renderPreview);
+//submitBtn
 document.getElementById("submitBtn").addEventListener("click", async () => {
   const fieldsToCheck = [];
 
@@ -740,14 +741,15 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
   const toEmail = document.getElementById("toEmail");
   if (!toEmail.value.trim()) fieldsToCheck.push(toEmail);
 
-  // --- SECTION E: Attachments ---
-  const attachmentInput = document.getElementById("attachmentsInput");
-  const attachmentFiles = attachmentInput?.files ? Array.from(attachmentInput.files) : [];
-  if (attachmentFiles.length === 0) fieldsToCheck.push(attachmentInput);
+  // --- SECTION E ---
+  if (attachmentFiles.length === 0) {
+    document.getElementById("attachmentsInput").style.outline = "2px solid red";
+  }
 
   // Highlight missing
   fieldsToCheck.forEach(el => el.style.outline = "2px solid red");
-  if (fieldsToCheck.length > 0) {
+
+  if (fieldsToCheck.length > 0 || attachmentFiles.length === 0) {
     console.warn("Missing fields:", fieldsToCheck.length);
     return;
   }
@@ -766,16 +768,22 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
 
   if (!fs.existsSync(path)) fs.mkdirSync(path, { recursive: true });
 
+  // --- Email Fields ---
   const ccEmail = document.getElementById("ccEmail").value.trim();
   const othersEmail = document.getElementById("othersEmail").value.trim();
   const toCcCombined = [toEmail.value.trim()].concat(ccEmail, othersEmail).filter(x=>x).join(", ");
 
+  // --- Attachments List ---
+  const attachmentsText = attachmentFiles.map(f => f.name).join("\n");
+
+  // --- Helper to extract table by heading ---
   function extractTable(content, heading) {
     const regex = new RegExp(`<h3>${heading}</h3>([\\s\\S]*?)</table>`, 'i');
     const match = content.match(regex);
     return match ? match[0] : "";
   }
 
+  // --- Helper to inline table styles for borders/colors ---
   function inlineTableStyles(html) {
     return html
       .replace(/<table([^>]*)>/gi, (match, attrs) => {
@@ -791,27 +799,40 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
       .replace(/<td([^>]*)>/gi, (match, attrs) => `<td${attrs} style="border:1px solid #000;">`);
   }
 
+  // --- Prepare main content excluding Discount and Movement tables ---
   let mainContent = htmlContent;
   const discountTable = extractTable(htmlContent, "Discount Table");
   const movementTable = extractTable(htmlContent, "Movement Table");
 
   if (discountTable) mainContent = mainContent.replace(discountTable, "");
   if (movementTable) mainContent = mainContent.replace(movementTable, "");
-  mainContent = inlineTableStyles(mainContent);
 
-  // --- Attachments List as Text ---
-  const attachmentsText = attachmentFiles.map(f => f.name).join("\n");
+  mainContent = inlineTableStyles(mainContent);
 
   // --- 1_submit file ---
   const file1 = `${path}\\1_submit_${accountName}_${todayStr}.txt`;
-  const file1Content = `Subject: Submission_${accountName}_${todayStr}\nTo: ${toEmail.value.trim()}\nCc: ${toCcCombined}\nAttachments:\n${attachmentsText}\n\nBody:\n${mainContent}`;
+  const file1Content = `Subject: Submission_${accountName}_${todayStr}
+To: ${toEmail.value.trim()}
+Cc: ${toCcCombined}
+Attachments:
+${attachmentsText}
+
+Body:
+${mainContent}`;
   fs.writeFileSync(file1, file1Content, "utf8");
 
   // --- 2_submit file (Discount Table only) ---
   if(discountTable) {
     const discountStyled = inlineTableStyles(discountTable);
     const file2 = `${path}\\2_submit_${accountName}_${todayStr}.txt`;
-    const file2Content = `Subject: Discount_${accountName}_${todayStr}\nTo: ${toEmail.value.trim()}\nCc: ${toCcCombined}\nAttachments:\n${attachmentsText}\n\nBody:\nHi Team<br><br>Please action the below discount request:<br>${discountStyled}`;
+    const file2Content = `Subject: Discount_${accountName}_${todayStr}
+To: ${toEmail.value.trim()}
+Cc: ${toCcCombined}
+Attachments:
+${attachmentsText}
+
+Body:
+Hi Team<br><br>Please action the below discount request:<br>${discountStyled}`;
     fs.writeFileSync(file2, file2Content, "utf8");
   }
 
@@ -819,11 +840,18 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
   if(movementTable) {
     const movementStyled = inlineTableStyles(movementTable);
     const file3 = `${path}\\3_submit_${accountName}_${todayStr}.txt`;
-    const file3Content = `Subject: Account Movement_${accountName}_${todayStr}\nTo: ${toEmail.value.trim()}\nCc: ${toCcCombined}\nAttachments:\n${attachmentsText}\n\nBody:\nHi Team<br><br>Please action the below Account movement request:<br>${movementStyled}`;
+    const file3Content = `Subject: Account Movement_${accountName}_${todayStr}
+To: ${toEmail.value.trim()}
+Cc: ${toCcCombined}
+Attachments:
+${attachmentsText}
+
+Body:
+Hi Team<br><br>Please action the below Account movement request:<br>${movementStyled}`;
     fs.writeFileSync(file3, file3Content, "utf8");
   }
 
-  // --- Launch or Ensure send.exe ---
+  // --- Check if send.exe running ---
   function isSendRunning() {
     try {
       const output = execSync('tasklist', { encoding: 'utf8' });
@@ -857,6 +885,7 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
   ensureSendExe();
   console.log("✅ All files created successfully!");
 });
+
 
 
 </script>
