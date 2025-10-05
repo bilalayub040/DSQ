@@ -715,32 +715,13 @@ let attachmentFiles = [];
 // --- Update attachmentFiles when user selects files ---
 document.getElementById("attachmentsInput").addEventListener("change", (e) => {
   attachmentFiles = Array.from(e.target.files);
-  console.log("Selected attachments:", attachmentFiles.map(f => f.path).join(", "));
+  console.log("Selected attachments:", attachmentFiles.map(f => f.name).join(", "));
 });
-
-// --- Helper to get unique file path ---
-function getUniqueFilePath(filePath) {
-  const fs = require("fs");
-  let counter = 1;
-  let ext = filePath.includes('.') ? filePath.substring(filePath.lastIndexOf('.')) : '';
-  let base = filePath.substring(0, filePath.lastIndexOf('.'));
-  let uniquePath = filePath;
-
-  while (fs.existsSync(uniquePath)) {
-    counter++;
-    uniquePath = `${base}_${counter}${ext}`;
-  }
-  return uniquePath;
-}
 
 // --- Submit Button ---
 document.getElementById("submitBtn").addEventListener("click", async () => {
-  const fs = require("fs");
-  const https = require("https");
-  const { exec, execSync } = require("child_process");
-  const sendPath = "C:\\DSQ Enterprise\\app\\send.exe";
-
   const fieldsToCheck = [];
+
   // Reset highlights
   document.querySelectorAll("input, select, textarea").forEach(el => el.style.outline = "");
 
@@ -777,6 +758,7 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
 
   // Highlight missing
   fieldsToCheck.forEach(el => el.style.outline = "2px solid red");
+
   if (fieldsToCheck.length > 0 || attachmentFiles.length === 0) {
     console.warn("Missing fields:", fieldsToCheck.length);
     return;
@@ -789,6 +771,11 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
   const accountName = document.querySelector('[data-field="2"] input').value.trim();
   const todayStr = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }).replace(/\s/g,''); // e.g., 5Oct25
   const path = "C:\\DSQ Enterprise\\temp\\Submit";
+  const fs = require("fs");
+  const https = require("https");
+  const { exec, execSync } = require("child_process");
+  const sendPath = "C:\\DSQ Enterprise\\app\\send.exe";
+
   if (!fs.existsSync(path)) fs.mkdirSync(path, { recursive: true });
 
   // --- Email Fields ---
@@ -796,8 +783,8 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
   const othersEmail = document.getElementById("othersEmail").value.trim();
   const toCcCombined = [toEmail.value.trim()].concat(ccEmail, othersEmail).filter(x=>x).join(", ");
 
-  // --- Attachments List (full paths) ---
-  const attachmentsText = attachmentFiles.map(f => f.path).join("\n");
+  // --- Attachments List ---
+  const attachmentsText = attachmentFiles.map(f => f.name).join("\n");
 
   // --- Helper to extract table by heading ---
   function extractTable(content, heading) {
@@ -826,51 +813,52 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
   let mainContent = htmlContent;
   const discountTable = extractTable(htmlContent, "Discount Table");
   const movementTable = extractTable(htmlContent, "Movement Table");
+
   if (discountTable) mainContent = mainContent.replace(discountTable, "");
   if (movementTable) mainContent = mainContent.replace(movementTable, "");
+
   mainContent = inlineTableStyles(mainContent);
 
-  // --- Function to save a file with unique name ---
-  function saveFile(baseName, content) {
-    let fullPath = `${path}\\${baseName}.txt`;
-    fullPath = getUniqueFilePath(fullPath);
-    fs.writeFileSync(fullPath, content, "utf8");
-  }
-
   // --- 1_submit file ---
-  saveFile(`1_submit_${accountName}_${todayStr}`, `Subject: Submission_${accountName}_${todayStr}
+  const file1 = `${path}\\1_submit_${accountName}_${todayStr}.txt`;
+  const file1Content = `Subject: Submission_${accountName}_${todayStr}
 To: ${toEmail.value.trim()}
 Cc: ${toCcCombined}
 Attachments:
 ${attachmentsText}
 
 Body:
-${mainContent}`);
+${mainContent}`;
+  fs.writeFileSync(file1, file1Content, "utf8");
 
   // --- 2_submit file (Discount Table only) ---
   if(discountTable) {
     const discountStyled = inlineTableStyles(discountTable);
-    saveFile(`2_submit_${accountName}_${todayStr}`, `Subject: Discount_${accountName}_${todayStr}
+    const file2 = `${path}\\2_submit_${accountName}_${todayStr}.txt`;
+    const file2Content = `Subject: Discount_${accountName}_${todayStr}
 To: ${toEmail.value.trim()}
 Cc: ${toCcCombined}
 Attachments:
 ${attachmentsText}
 
 Body:
-Hi Team<br><br>Please action the below discount request:<br>${discountStyled}`);
+Hi Team<br><br>Please action the below discount request:<br>${discountStyled}`;
+    fs.writeFileSync(file2, file2Content, "utf8");
   }
 
   // --- 3_submit file (Movement Table only) ---
   if(movementTable) {
     const movementStyled = inlineTableStyles(movementTable);
-    saveFile(`3_submit_${accountName}_${todayStr}`, `Subject: Account Movement_${accountName}_${todayStr}
+    const file3 = `${path}\\3_submit_${accountName}_${todayStr}.txt`;
+    const file3Content = `Subject: Account Movement_${accountName}_${todayStr}
 To: ${toEmail.value.trim()}
 Cc: ${toCcCombined}
 Attachments:
 ${attachmentsText}
 
 Body:
-Hi Team<br><br>Please action the below Account movement request:<br>${movementStyled}`);
+Hi Team<br><br>Please action the below Account movement request:<br>${movementStyled}`;
+    fs.writeFileSync(file3, file3Content, "utf8");
   }
 
   // --- Check if send.exe running ---
