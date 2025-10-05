@@ -5,7 +5,13 @@ import shutil
 import datetime
 import win32com.client
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
+
+# --- Determine base directory properly for .exe ---
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def find_today_files(folder):
     today_str = datetime.datetime.now().strftime("%#d%b%y")  # e.g., 5Oct25
@@ -13,10 +19,9 @@ def find_today_files(folder):
     for f in glob.glob(os.path.join(folder, "*_submit_*.txt")):
         basename = os.path.basename(f)
         name_part = os.path.splitext(basename)[0]  # remove .txt
-        if name_part.rsplit("_", 1)[-1] == today_str:
+        if name_part.rsplit("_", 1)[-1].lower() == today_str.lower():
             files.append(f)
     return files
-
 
 def parse_file(file_path):
     subject = ""
@@ -40,9 +45,8 @@ def parse_file(file_path):
         elif line.startswith("Body:"):
             mode = "body"
         else:
-            if mode == "attachments":
-                if line.strip():
-                    attachments.append(line.strip())
+            if mode == "attachments" and line.strip():
+                attachments.append(line.strip())
             elif mode == "body":
                 body_lines.append(line)
     body = "\n".join(body_lines)
@@ -62,6 +66,7 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
         status_window.status_label.config(text="Status: Sending...")
         mail.Send()
         status_window.status_label.config(text="Status: Sent successfully!")
+        # Close after 3 seconds
         status_window.after(3000, status_window.destroy)
     except Exception as e:
         status_window.status_label.config(text=f"Status: Failed\n{e}")
@@ -100,7 +105,7 @@ class StatusWindow(tk.Tk):
         self.geometry(f"+{x}+{y}")
 
 def main():
-    folder = os.path.dirname(os.path.abspath(__file__))
+    folder = BASE_DIR
     files = find_today_files(folder)
     if not files:
         print("No files to send today.")
@@ -120,7 +125,7 @@ def main():
                 os.remove(file_path)
             elif os.path.isdir(file_path):
                 shutil.rmtree(file_path)
-        # delete folder itself
+        # Delete folder itself
         os.chdir(os.path.dirname(folder))
         shutil.rmtree(folder)
     except Exception as e:
