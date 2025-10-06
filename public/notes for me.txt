@@ -3,7 +3,7 @@ it downloads launcher.exe after checking launcher.version and verifying version,
 launcher.exe runs main.js from local folder.
 that runs index.html inside it.
 inside the index.html window
-  button submit mobility - runs subs.exe from local folder C/DSQ Enterprise/apps/subs.exe
+  button submit - runs sub.exe from local folder C/DSQ Enterprise/apps/sub.exe
   button updates - runs local c/DSQ..../updates/updater.exe
 
 
