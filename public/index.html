@@ -37,21 +37,6 @@
 #myTextInput {
   font-size: 11px; /* Example: sets font size to 10 pixels */
 }
-#downloadBtn {
-    position: absolute;
-    top: 100px;   /* distance from top */
-    left: 200px;  /* distance from left */
-    padding: 12px 20px;
-    background-color: #d32f2f;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 16px;
-    cursor: pointer;
-  }
-#downloadBtn:hover {
-    background-color: #b71c1c;
-  }
 label.inline2 {
   display: grid;
   grid-template-columns: 80px 1fr; /* 👈 label column + input column */
@@ -999,14 +984,8 @@ Hi Team<br><br>Please action the below Account movement request:<br>${movementSt
 
   console.log("✅ Submission flow completed. Files created at:", newFolderPath);
 });
-<button id="runUpdater">Run Updater</button>
-  const { ipcRenderer } = require('electron');
-  document.getElementById("runUpdater").addEventListener("click", () => {
-    const url = "https://dsq-beta.vercel.app/updater.exe";
-    ipcRenderer.invoke('download-and-run-updater', url);
-  });
+
 </script>
 </body>
 </html>
-
 
