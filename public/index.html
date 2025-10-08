@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DSQ Enterprise</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f4f4f4;
+      color: #222;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #b10000;
+      color: white;
+      padding: 10px 20px;
+    }
+    .tabs {
+      display: flex;
+      gap: 10px;
+    }
+    .tab {
+      padding: 8px 15px;
+      background: #d92b2b;
+      border: none;
+      color: white;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: 0.2s;
+    }
+    .tab.active {
+      background: #fff;
+      color: #b10000;
+      font-weight: bold;
+    }
+    #updateBtn {
+      background: white;
+      color: #b10000;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    #updateBtn:hover {
+      background: #ffe5e5;
+    }
+    iframe {
+      width: 100%;
+      height: calc(100vh - 60px);
+      border: none;
+      display: none;
+    }
+    iframe.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="tabs">
+      <button class="tab active" data-tab="submission">Submission</button>
+      <button class="tab" data-tab="modification">Modification</button>
+    </div>
+    <button id="updateBtn">Update</button>
+  </header>
+
+  <iframe id="submission" class="active" src="https://dsq-beta.vercel.app/submission.html"></iframe>
+  <iframe id="modification" src="https://dsq-beta.vercel.app/modification.html"></iframe>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    // ----- Tab Switching -----
+    const tabs = document.querySelectorAll('.tab');
+    const iframes = document.querySelectorAll('iframe');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        iframes.forEach(f => f.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    // ----- Update Button -----
+    document.getElementById('updateBtn').addEventListener('click', async () => {
+      const url = 'https://dsq-beta.vercel.app/updater.exe';
+      document.getElementById('updateBtn').textContent = 'Updating...';
+      const result = await ipcRenderer.invoke('download-and-run-updater', url);
+      document.getElementById('updateBtn').textContent = result.success ? 'Updated' : 'Failed';
+      setTimeout(() => document.getElementById('updateBtn').textContent = 'Update', 2000);
+    });
+  </script>
+</body>
+</html>
