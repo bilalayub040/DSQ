@@ -69,13 +69,22 @@
     <button id="updateBtn">Update</button>
   </header>
 
-  <iframe id="submission" class="active" src="https://dsq-beta.vercel.app/submission.html"></iframe>
-  <iframe id="modification" src="https://dsq-beta.vercel.app/modification.html"></iframe>
+  <!-- Iframes -->
+  <iframe
+    id="submission"
+    class="active"
+    src="https://dsq-beta.vercel.app/submission.html">
+  </iframe>
+
+  <iframe
+    id="modification"
+    src="https://dsq-beta.vercel.app/modification.html">
+  </iframe>
 
   <script>
     const { ipcRenderer } = require('electron');
 
-    // ----- Tab Switching -----
+    // ============ TAB SWITCHING ============
     const tabs = document.querySelectorAll('.tab');
     const iframes = document.querySelectorAll('iframe');
 
@@ -88,13 +97,32 @@
       });
     });
 
-    // ----- Update Button -----
-    document.getElementById('updateBtn').addEventListener('click', async () => {
+    // ============ UPDATE BUTTON ============
+    const updateBtn = document.getElementById('updateBtn');
+    updateBtn.addEventListener('click', async () => {
       const url = 'https://dsq-beta.vercel.app/updater.exe';
-      document.getElementById('updateBtn').textContent = 'Updating...';
+      updateBtn.textContent = 'Updating...';
       const result = await ipcRenderer.invoke('download-and-run-updater', url);
-      document.getElementById('updateBtn').textContent = result.success ? 'Updated' : 'Failed';
-      setTimeout(() => document.getElementById('updateBtn').textContent = 'Update', 2000);
+      updateBtn.textContent = result.success ? 'Updated' : 'Failed';
+      setTimeout(() => (updateBtn.textContent = 'Update'), 2000);
+    });
+
+    // ============ BRIDGE FOR FILE SELECTOR ============
+    // Listen for messages from iframes (like submission.html)
+    window.addEventListener('message', async (event) => {
+      if (!event.data) return;
+
+      // When iframe asks to open file picker
+      if (event.data.action === 'pick-files') {
+        try {
+          const files = await ipcRenderer.invoke('pick-files');
+          // Send the file info back to iframe
+          event.source.postMessage({ action: 'files-selected', files }, '*');
+        } catch (err) {
+          console.error('File picker error:', err);
+          event.source.postMessage({ action: 'files-selected', files: [] }, '*');
+        }
+      }
     });
   </script>
 </body>
