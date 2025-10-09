@@ -55,13 +55,7 @@ def parse_file(file_path):
     return subject, to_emails, cc_emails, attachments, body
 
 def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
-    """
-    Runs in a background thread. Initializes COM for the thread, sends the mail,
-    updates UI through status_window.after(...) to stay thread-safe.
-    """
-
     def ui_set(text):
-        # schedule UI update on main thread
         try:
             status_window.after(0, lambda: status_window.status_label.config(text=text))
         except Exception:
@@ -74,81 +68,94 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
             pass
 
     def worker():
+        # initialize COM for this thread
         pythoncom.CoInitialize()
         try:
             outlook = win32com.client.Dispatch("Outlook.Application")
             session = outlook.Session
+            namespace = outlook.GetNamespace("MAPI")
 
-            # Get sender (default/current Outlook user) safely
+            # ----- Resolve sender email with multiple fallbacks -----
+            sender_email = ""
             try:
-                sender_email = session.CurrentUser.AddressEntry.GetExchangeUser().PrimarySmtpAddress
+                # best attempt for Exchange users
+                ae = session.CurrentUser.AddressEntry
+                if ae:
+                    ex = ae.GetExchangeUser()
+                    if ex and ex.PrimarySmtpAddress:
+                        sender_email = ex.PrimarySmtpAddress
             except Exception:
-                # Fallback - display name (not ideal but safe)
+                sender_email = ""
+
+            if not sender_email:
+                # fallback to first account SMTP if possible
                 try:
-                    sender_email = session.CurrentUser.AddressEntry.Name
+                    acc = namespace.Accounts.Item(1)
+                    if acc and getattr(acc, "SmtpAddress", None):
+                        sender_email = acc.SmtpAddress
                 except Exception:
                     sender_email = ""
+
             sender_email = (sender_email or "").strip().lower()
 
-            # Prepare recipients - accept commas or semicolons
+            # ----- Parse recipients (accept ',' or ';') -----
             def split_addrs(s):
                 if not s:
                     return []
-                parts = re.split(r'[;,]', s)
-                return [p.strip() for p in parts if p and p.strip()]
+                parts = [p.strip() for p in re.split(r'[;,]', s) if p and p.strip()]
+                return parts
 
             to_list = split_addrs(to_emails)
             cc_list = split_addrs(cc_emails)
 
-            # Add sender to CC if not already present (case-insensitive)
+            # ----- Add sender to CC if resolved and not already present -----
             if sender_email:
                 lower_cc = [c.lower() for c in cc_list]
                 if sender_email not in lower_cc:
                     cc_list.append(sender_email)
 
-            # Validate at least one To
+            # Build strings shown to Outlook
+            to_str = "; ".join(to_list)
+            cc_str = "; ".join(cc_list)
+
+            # update UI to show final To/CC
+            ui_set(f"Sending to: {to_str or '(none)'}\nCC: {cc_str or '(none)'}\nStatus: Sending...")
+
             if not to_list:
                 ui_set("Status: Failed\nNo valid 'To' email address found!")
                 ui_close(5000)
                 return
 
-            # Create mail item (use default account/context)
-            mail = outlook.CreateItem(0)  # olMailItem
-
-            # Assign fields
+            # ----- Create and fill MailItem -----
+            mail = outlook.CreateItem(0)
             mail.Subject = subject or ""
-            mail.To = "; ".join(to_list)
-            mail.CC = "; ".join(cc_list)
+            mail.To = to_str
+            mail.CC = cc_str
 
-            # Assign HTML body safely; fallback to plain Body on failure
+            # HTML body with fallback
             try:
                 mail.HTMLBody = body or ""
             except Exception:
                 try:
-                    # strip HTML tags minimally if needed
-                    plain = re.sub(r'<[^>]+>', '', body or "")
-                    mail.Body = plain
+                    mail.Body = re.sub(r'<[^>]+>', '', body or "")
                 except Exception:
                     mail.Body = body or ""
 
-            # Attach files safely
+            # Attachments (skip missing/bad)
             for att in attachments or []:
                 try:
                     if att and os.path.exists(att):
                         mail.Attachments.Add(att)
                 except Exception:
-                    # skip problematic attachment
                     continue
 
-            # Try to set SaveSentMessageFolder to the default Sent of the account
-            # We avoid SendUsingAccount to prevent 4096; rely on default account for sending.
+            # Try to set SaveSentMessageFolder to sender's account Sent if possible (best-effort)
             try:
-                # find an account matching sender_email if possible (best-effort)
                 target_acc = None
                 try:
-                    for acc in session.Accounts:
+                    for acc in namespace.Accounts:
                         try:
-                            if acc.SmtpAddress and acc.SmtpAddress.lower() == sender_email:
+                            if getattr(acc, "SmtpAddress", "").lower() == sender_email:
                                 target_acc = acc
                                 break
                         except Exception:
@@ -165,15 +172,13 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
             except Exception:
                 pass
 
-            ui_set(f"Status: Sending via {sender_email or 'default account'}...")
+            # Send
             mail.Send()
             ui_set("Status: Sent successfully!")
             ui_close(3000)
 
         except Exception as e:
-            # Provide concise error message
-            msg = str(e)
-            ui_set(f"Status: Failed\n{msg}")
+            ui_set(f"Status: Failed\n{e}")
             ui_close(6000)
         finally:
             try:
@@ -181,6 +186,7 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
             except Exception:
                 pass
 
+    # run worker thread (daemon so it won't block exit)
     t = threading.Thread(target=worker, daemon=True)
     t.start()
 
@@ -251,3 +257,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
