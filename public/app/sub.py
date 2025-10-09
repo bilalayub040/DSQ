@@ -57,60 +57,63 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
         outlook = win32com.client.Dispatch("Outlook.Application")
         namespace = outlook.GetNamespace("MAPI")
 
-        # Find the first DSQ.qa account to use for sending
-        main_account = None
-        for acct in namespace.Accounts:
-            if acct.SmtpAddress.lower().endswith("@dsq.qa"):
-                main_account = acct
+        # --- Find DSQ.qa account ---
+        dsq_account = None
+        for acc in namespace.Accounts:
+            if "dsq.qa" in acc.SmtpAddress.lower():
+                dsq_account = acc
                 break
 
-        if not main_account:
+        if not dsq_account:
             raise Exception("No DSQ.qa account found in Outlook!")
 
-        mail = outlook.CreateItem(0)  # MailItem
-        mail.SendUsingAccount = main_account
+        mail = outlook.CreateItem(0)
+        mail._oleobj_.Invoke(*(0x000F, 0, 8, 0, dsq_account))  # Set SendUsingAccount
 
-        sender_email = main_account.SmtpAddress.lower()
+        sender_email = dsq_account.SmtpAddress.lower()
 
-        # Clean up To and CC
+        # --- Clean recipient lists ---
         to_list = [e.strip() for e in to_emails.replace(",", ";").split(";") if e.strip()]
         cc_list = [e.strip() for e in cc_emails.replace(",", ";").split(";") if e.strip()]
 
-        # Add sender to CC if not already there
-        if sender_email and sender_email not in [e.lower() for e in cc_list]:
+        # --- Resolve sender info safely ---
+        try:
+            current_user = namespace.CurrentUser.AddressEntry.GetExchangeUser()
+            if current_user:
+                current_user_email = current_user.PrimarySmtpAddress.lower()
+            else:
+                current_user_email = sender_email
+        except:
+            current_user_email = sender_email
+
+        # --- Avoid duplicate CC to self ---
+        if sender_email not in [e.lower() for e in cc_list] and sender_email != current_user_email:
             cc_list.append(sender_email)
 
-        to_str = ", ".join(to_list)
-        cc_str = ", ".join(cc_list)
-
-        if not to_str:
-            raise ValueError("No valid 'To' email address found!")
-
-        # Set email fields
+        # --- Assign email fields ---
         mail.Subject = subject
-        mail.To = to_str
-        mail.CC = cc_str
+        mail.To = "; ".join(to_list)
+        mail.CC = "; ".join(cc_list)
         mail.HTMLBody = body
 
-        # Add attachments
-        for att in attachments:
-            if os.path.exists(att):
-                mail.Attachments.Add(att)
+        # --- Add attachments ---
+        for file_path in attachments:
+            if os.path.exists(file_path):
+                mail.Attachments.Add(file_path)
 
-        # Save in Sent Items of DSQ account
-        sent_folder = main_account.DeliveryStore.GetDefaultFolder(5)  # olFolderSentMail = 5
+        # --- Save to proper Sent folder ---
+        sent_folder = dsq_account.DeliveryStore.GetDefaultFolder(5)  # olFolderSentMail
         mail.SaveSentMessageFolder = sent_folder
 
-        # Send
+        # --- Send email ---
         status_window.status_label.config(text=f"Status: Sending via {sender_email}...")
         mail.Send()
-
         status_window.status_label.config(text="Status: Sent successfully!")
         status_window.after(3000, status_window.destroy)
 
     except Exception as e:
         status_window.status_label.config(text=f"Status: Failed\n{e}")
-        status_window.after(5000, status_window.destroy)
+        status_window.after(6000, status_window.destroy)
 
 class StatusWindow(tk.Tk):
     def __init__(self, to_emails, cc_emails, subject):
@@ -119,7 +122,8 @@ class StatusWindow(tk.Tk):
         self.geometry("400x120+500+300")
         self.resizable(False, False)
         self.attributes("-topmost", True)
-        # Make draggable
+
+        # --- Make draggable ---
         self.bind("<ButtonPress-1>", self.start_move)
         self.bind("<ButtonRelease-1>", self.stop_move)
         self.bind("<B1-Motion>", self.do_move)
@@ -154,18 +158,19 @@ def main():
     for fpath in files:
         subject, to_emails, cc_emails, attachments, body = parse_file(fpath)
         status_window = StatusWindow(to_emails, cc_emails, subject)
-        status_window.after(100, lambda f=files, s=subject, t=to_emails, c=cc_emails, a=attachments, b=body, w=status_window:
-                            send_email(s, t, c, a, b, w))
+        status_window.after(
+            100,
+            lambda s=subject, t=to_emails, c=cc_emails, a=attachments, b=body, w=status_window:
+            send_email(s, t, c, a, b, w)
+        )
         status_window.mainloop()
 
-    # Delete only the processed files and itself
+    # --- Cleanup processed files and itself ---
     try:
-        # Delete the processed text files
         for f in files:
             if os.path.exists(f) and os.path.isfile(f):
                 os.remove(f)
 
-        # Delete the executable/script itself
         script_path = sys.executable if getattr(sys, 'frozen', False) else __file__
         os.remove(script_path)
     except Exception as e:
@@ -173,11 +178,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
