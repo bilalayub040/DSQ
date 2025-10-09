@@ -2,7 +2,9 @@ import os
 import sys
 import glob
 import datetime
+import re
 import win32com.client
+import pythoncom
 import tkinter as tk
 from tkinter import ttk
 import threading
@@ -53,82 +55,140 @@ def parse_file(file_path):
     return subject, to_emails, cc_emails, attachments, body
 
 def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
+    """
+    Runs in a background thread. Initializes COM for the thread, sends the mail,
+    updates UI through status_window.after(...) to stay thread-safe.
+    """
+
+    def ui_set(text):
+        # schedule UI update on main thread
+        try:
+            status_window.after(0, lambda: status_window.status_label.config(text=text))
+        except Exception:
+            pass
+
+    def ui_close(delay_ms=3000):
+        try:
+            status_window.after(delay_ms, status_window.destroy)
+        except Exception:
+            pass
+
     def worker():
+        pythoncom.CoInitialize()
         try:
             outlook = win32com.client.Dispatch("Outlook.Application")
-            namespace = outlook.GetNamespace("MAPI")
+            session = outlook.Session
 
-            # Find first DSQ.qa account
-            main_account = None
-            for acct in namespace.Accounts:
-                try:
-                    if acct.SmtpAddress.lower().endswith("@dsq.qa"):
-                        main_account = acct
-                        break
-                except Exception:
-                    continue
-            if not main_account:
-                raise Exception("No DSQ.qa account found in Outlook!")
-
-            mail = outlook.CreateItem(0)  # MailItem
-            mail.SendUsingAccount = main_account
-            sender_email = main_account.SmtpAddress.lower()
-
-            # Parse To/CC lists
-            to_list = [e.strip() for e in to_emails.replace(",", ";").split(";") if e.strip()]
-            cc_list = [e.strip() for e in cc_emails.replace(",", ";").split(";") if e.strip()]
-
-            # Always add sender to CC
-            if sender_email and sender_email not in [e.lower() for e in cc_list]:
-                cc_list.append(sender_email)
-
-            to_str = "; ".join(to_list)
-            cc_str = "; ".join(cc_list)
-
-            if not to_str:
-                raise ValueError("No valid 'To' email address found!")
-
-            mail.Subject = subject
-            mail.To = to_str
-            mail.CC = cc_str
-
-            # Assign HTMLBody safely
+            # Get sender (default/current Outlook user) safely
             try:
-                mail.HTMLBody = body
+                sender_email = session.CurrentUser.AddressEntry.GetExchangeUser().PrimarySmtpAddress
             except Exception:
-                mail.Body = body
+                # Fallback - display name (not ideal but safe)
+                try:
+                    sender_email = session.CurrentUser.AddressEntry.Name
+                except Exception:
+                    sender_email = ""
+            sender_email = (sender_email or "").strip().lower()
 
-            # Add attachments safely
-            for att in attachments:
-                if os.path.exists(att):
-                    try:
-                        mail.Attachments.Add(att)
-                    except Exception:
-                        continue
+            # Prepare recipients - accept commas or semicolons
+            def split_addrs(s):
+                if not s:
+                    return []
+                parts = re.split(r'[;,]', s)
+                return [p.strip() for p in parts if p and p.strip()]
 
-            # Save in Sent Items of main account
+            to_list = split_addrs(to_emails)
+            cc_list = split_addrs(cc_emails)
+
+            # Add sender to CC if not already present (case-insensitive)
+            if sender_email:
+                lower_cc = [c.lower() for c in cc_list]
+                if sender_email not in lower_cc:
+                    cc_list.append(sender_email)
+
+            # Validate at least one To
+            if not to_list:
+                ui_set("Status: Failed\nNo valid 'To' email address found!")
+                ui_close(5000)
+                return
+
+            # Create mail item (use default account/context)
+            mail = outlook.CreateItem(0)  # olMailItem
+
+            # Assign fields
+            mail.Subject = subject or ""
+            mail.To = "; ".join(to_list)
+            mail.CC = "; ".join(cc_list)
+
+            # Assign HTML body safely; fallback to plain Body on failure
             try:
-                sent_folder = main_account.DeliveryStore.GetDefaultFolder(5)  # olFolderSentMail
-                mail.SaveSentMessageFolder = sent_folder
+                mail.HTMLBody = body or ""
+            except Exception:
+                try:
+                    # strip HTML tags minimally if needed
+                    plain = re.sub(r'<[^>]+>', '', body or "")
+                    mail.Body = plain
+                except Exception:
+                    mail.Body = body or ""
+
+            # Attach files safely
+            for att in attachments or []:
+                try:
+                    if att and os.path.exists(att):
+                        mail.Attachments.Add(att)
+                except Exception:
+                    # skip problematic attachment
+                    continue
+
+            # Try to set SaveSentMessageFolder to the default Sent of the account
+            # We avoid SendUsingAccount to prevent 4096; rely on default account for sending.
+            try:
+                # find an account matching sender_email if possible (best-effort)
+                target_acc = None
+                try:
+                    for acc in session.Accounts:
+                        try:
+                            if acc.SmtpAddress and acc.SmtpAddress.lower() == sender_email:
+                                target_acc = acc
+                                break
+                        except Exception:
+                            continue
+                except Exception:
+                    target_acc = None
+
+                if target_acc:
+                    try:
+                        sent_folder = target_acc.DeliveryStore.GetDefaultFolder(5)  # olFolderSentMail
+                        mail.SaveSentMessageFolder = sent_folder
+                    except Exception:
+                        pass
             except Exception:
                 pass
 
-            status_window.status_label.config(text=f"Status: Sending via {sender_email}...")
+            ui_set(f"Status: Sending via {sender_email or 'default account'}...")
             mail.Send()
-            status_window.status_label.config(text="Status: Sent successfully!")
-            status_window.after(3000, status_window.destroy)
+            ui_set("Status: Sent successfully!")
+            ui_close(3000)
 
         except Exception as e:
-            status_window.status_label.config(text=f"Status: Failed\n{e}")
-            status_window.after(5000, status_window.destroy)
+            # Provide concise error message
+            msg = str(e)
+            ui_set(f"Status: Failed\n{msg}")
+            ui_close(6000)
+        finally:
+            try:
+                pythoncom.CoUninitialize()
+            except Exception:
+                pass
 
-    threading.Thread(target=worker).start()
+    t = threading.Thread(target=worker, daemon=True)
+    t.start()
 
 class StatusWindow(tk.Tk):
     def __init__(self, to_emails, cc_emails, subject):
         super().__init__()
         self.title("Email Sending Status")
-        self.geometry("400x120+500+300")
+        self.geometry("420x120+500+300")
         self.resizable(False, False)
         self.attributes("-topmost", True)
         # Make draggable
@@ -138,10 +198,11 @@ class StatusWindow(tk.Tk):
         self.offset_x = 0
         self.offset_y = 0
 
-        ttk.Label(self, text=f"Sending to: {to_emails} and {cc_emails}", wraplength=380).pack(pady=5)
-        ttk.Label(self, text=f"Subject: {subject}", wraplength=380).pack(pady=5)
-        self.status_label = ttk.Label(self, text="Status: Pending", wraplength=380)
-        self.status_label.pack(pady=5)
+        ttk.Label(self, text=f"Sending to: {to_emails or '(none)'}", wraplength=400).pack(pady=(8,0))
+        ttk.Label(self, text=f"Cc: {cc_emails or '(none)'}", wraplength=400).pack(pady=(2,6))
+        ttk.Label(self, text=f"Subject: {subject or ''}", wraplength=400).pack()
+        self.status_label = ttk.Label(self, text="Status: Pending", wraplength=400)
+        self.status_label.pack(pady=6)
 
     def start_move(self, event):
         self.offset_x = event.x
@@ -166,21 +227,25 @@ def main():
     for fpath in files:
         subject, to_emails, cc_emails, attachments, body = parse_file(fpath)
         status_window = StatusWindow(to_emails, cc_emails, subject)
+        # schedule the send shortly after window appears
         status_window.after(100, lambda s=subject, t=to_emails, c=cc_emails, a=attachments, b=body, w=status_window:
                             send_email(s, t, c, a, b, w))
         status_window.mainloop()
 
-    # --- Cleanup: delete processed files and self ---
+    # --- Cleanup processed files and self (best-effort) ---
     try:
         for f in files:
-            if os.path.exists(f) and os.path.isfile(f):
-                os.remove(f)
-
+            try:
+                if os.path.exists(f) and os.path.isfile(f):
+                    os.remove(f)
+            except Exception:
+                pass
         script_path = sys.executable if getattr(sys, 'frozen', False) else __file__
         try:
             os.remove(script_path)
         except Exception:
-            pass  # ignore if locked
+            # cannot delete running exe; ignore
+            pass
     except Exception as e:
         print(f"Cleanup failed: {e}")
 
