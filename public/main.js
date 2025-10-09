@@ -19,7 +19,6 @@ async function createWindow() {
             contextIsolation: false,
             webSecurity: false
         }
-            menu: null,
     });
 
     await win.loadURL(mainUrl);
@@ -69,5 +68,6 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
+
 
 
