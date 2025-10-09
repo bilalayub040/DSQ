@@ -56,19 +56,28 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
     try:
         outlook = win32com.client.Dispatch("Outlook.Application")
         namespace = outlook.GetNamespace("MAPI")
-        # Get the default sending account email
         sender_email = namespace.Accounts.Item(1).SmtpAddress
+
+        # Clean up To and CC emails
+        to_list = [e.strip() for e in to_emails.split(";") if e.strip()]
+        cc_list = [e.strip() for e in cc_emails.split(";") if e.strip()]
+
+        # Add sender to CC if not already there
+        if sender_email not in cc_list:
+            cc_list.append(sender_email)
+
+        # Join back into strings
+        to_str = ", ".join(to_list)
+        cc_str = ", ".join(cc_list)
+
+        # Validate we have at least one recipient
+        if not to_str:
+            raise ValueError("No valid 'To' email address found!")
 
         mail = outlook.CreateItem(0)  # 0=MailItem
         mail.Subject = subject
-        mail.To = to_emails.replace(";", ",")
-        
-        # Build CC: existing + sender email
-        cc_list = [e.strip() for e in cc_emails.split(";") if e.strip()]
-        if sender_email not in cc_list:
-            cc_list.append(sender_email)
-        mail.CC = ", ".join(cc_list)
-        
+        mail.To = to_str
+        mail.CC = cc_str
         mail.HTMLBody = body
 
         # Add attachments
@@ -80,6 +89,7 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
         mail.Send()
         status_window.status_label.config(text="Status: Sent successfully!")
         status_window.after(3000, status_window.destroy)
+
     except Exception as e:
         status_window.status_label.config(text=f"Status: Failed\n{e}")
         status_window.after(5000, status_window.destroy)
@@ -145,5 +155,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
