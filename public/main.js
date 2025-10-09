@@ -19,7 +19,7 @@ async function createWindow() {
             contextIsolation: false,
             webSecurity: false
         }
-            autoHideMenuBar: true, // <-- this hides the menu bar
+            menu: null,
     });
 
     await win.loadURL(mainUrl);
@@ -69,4 +69,5 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
+
 
