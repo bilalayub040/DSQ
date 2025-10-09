@@ -64,7 +64,16 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
 
         # Use the default Outlook sending account (the one used for manual sends)
         mail.SendUsingAccount = namespace.Accounts.Item(1)
-        sender_email = mail.SendUsingAccount.SmtpAddress.strip().lower()
+        sender_email = ""
+        try:
+            sender_email = mail.SendUsingAccount.SmtpAddress
+        except Exception:
+            try:
+                sender_email = namespace.CurrentUser.AddressEntry.GetExchangeUser().PrimarySmtpAddress
+            except Exception:
+                sender_email = namespace.CurrentUser.Name
+        sender_email = sender_email.strip().lower()
+
 
         # Clean up To and CC (handle commas, semicolons, empties)
         to_list = [e.strip() for e in to_emails.replace(",", ";").split(";") if e.strip()]
@@ -160,6 +169,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
