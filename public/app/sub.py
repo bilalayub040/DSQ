@@ -57,10 +57,10 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
         outlook = win32com.client.Dispatch("Outlook.Application")
         namespace = outlook.GetNamespace("MAPI")
 
-        # Create the mail
+        # Create the mail item
         mail = outlook.CreateItem(0)  # 0 = MailItem
 
-        # --- Find first DSQ.qa account ---
+        # --- Find the first DSQ.qa account ---
         dsq_account = None
         for acc in namespace.Accounts:
             try:
@@ -77,20 +77,26 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
         if not dsq_account:
             raise Exception("No DSQ.qa account found in Outlook!")
 
+        # Use this account to send
         mail.SendUsingAccount = dsq_account
         sender_email = dsq_account.SmtpAddress.strip().lower()
 
-        # --- Clean up To and CC ---
+        # --- Ensure it saves in the account's standard Sent folder ---
+        sent_folder = dsq_account.DeliveryStore.GetDefaultFolder(5)  # 5 = olFolderSentMail
+        mail.SaveSentMessageFolder = sent_folder
+
+        # --- Clean up To and CC from file ---
         to_list = [e.strip() for e in to_emails.replace(",", ";").split(";") if e.strip()]
         cc_list = [e.strip() for e in cc_emails.replace(",", ";").split(";") if e.strip()]
 
         to_str = ", ".join(to_list)
         cc_str = ", ".join(cc_list)
 
+        # Validate at least one recipient
         if not to_str:
             raise ValueError("No valid 'To' email address found!")
 
-        # --- Set fields ---
+        # --- Set mail fields ---
         mail.Subject = subject
         mail.To = to_str
         mail.CC = cc_str
@@ -101,7 +107,7 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
             if os.path.exists(att):
                 mail.Attachments.Add(att)
 
-        # Send
+        # --- Send the email ---
         status_window.status_label.config(text=f"Status: Sending via {sender_email}...")
         mail.Send()
         status_window.status_label.config(text="Status: Sent successfully!")
@@ -110,6 +116,7 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
     except Exception as e:
         status_window.status_label.config(text=f"Status: Failed\n{e}")
         status_window.after(5000, status_window.destroy)
+
 class StatusWindow(tk.Tk):
     def __init__(self, to_emails, cc_emails, subject):
         super().__init__()
@@ -171,6 +178,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
