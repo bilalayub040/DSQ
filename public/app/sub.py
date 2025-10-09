@@ -6,7 +6,6 @@ import datetime
 import win32com.client
 import tkinter as tk
 from tkinter import ttk
-import functools
 
 # --- Determine base directory properly for .exe ---
 if getattr(sys, 'frozen', False):
@@ -58,35 +57,29 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
         outlook = win32com.client.Dispatch("Outlook.Application")
         namespace = outlook.GetNamespace("MAPI")
 
-        # Create the mail item
+        # Create mail first, then assign the same account that will send
         mail = outlook.CreateItem(0)  # 0 = MailItem
+        if namespace.Accounts.Count == 0:
+            raise Exception("No Outlook accounts configured!")
 
-        # --- Find the first DSQ.qa account ---
-        dsq_account = None
-        for acc in namespace.Accounts:
+        # Use the default Outlook sending account (the one used for manual sends)
+        mail.SendUsingAccount = namespace.Accounts.Item(1)
+        sender_email = ""
+        try:
+            sender_email = mail.SendUsingAccount.SmtpAddress
+        except Exception:
             try:
-                email = acc.SmtpAddress.strip().lower()
+                sender_email = namespace.CurrentUser.AddressEntry.GetExchangeUser().PrimarySmtpAddress
             except Exception:
-                continue
-            if email.endswith("@dsq.qa"):
-                dsq_account = acc
-                break
+                sender_email = namespace.CurrentUser.Name
+        sender_email = sender_email.strip().lower()
 
-        if not dsq_account:
-            raise Exception("No DSQ.qa account found in Outlook!")
 
-        # Use this account to send
-        mail.SendUsingAccount = dsq_account
-        sender_email = dsq_account.SmtpAddress.strip().lower()
-
-        # --- Ensure it saves in the account's standard Sent folder ---
-        sent_folder = dsq_account.DeliveryStore.GetDefaultFolder(5)  # 5 = olFolderSentMail
-        mail.SaveSentMessageFolder = sent_folder
-
-        # --- Clean up To and CC from file ---
+        # Clean up To and CC (handle commas, semicolons, empties)
         to_list = [e.strip() for e in to_emails.replace(",", ";").split(";") if e.strip()]
         cc_list = [e.strip() for e in cc_emails.replace(",", ";").split(";") if e.strip()]
 
+        # Join lists into strings (Outlook accepts commas or semicolons)
         to_str = ", ".join(to_list)
         cc_str = ", ".join(cc_list)
 
@@ -94,18 +87,18 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
         if not to_str:
             raise ValueError("No valid 'To' email address found!")
 
-        # --- Set mail fields AFTER assigning account & folder ---
+        # Set fields
         mail.Subject = subject
         mail.To = to_str
         mail.CC = cc_str
         mail.HTMLBody = body
 
-        # Add attachments
+        # Add attachments (absolute paths preferred)
         for att in attachments:
             if os.path.exists(att):
                 mail.Attachments.Add(att)
 
-        # --- Send the email ---
+        # Send
         status_window.status_label.config(text=f"Status: Sending via {sender_email}...")
         mail.Send()
         status_window.status_label.config(text="Status: Sent successfully!")
@@ -157,19 +150,18 @@ def main():
     for fpath in files:
         subject, to_emails, cc_emails, attachments, body = parse_file(fpath)
         status_window = StatusWindow(to_emails, cc_emails, subject)
-        
-        # Use functools.partial to capture current variables correctly
-        send_func = functools.partial(send_email, subject, to_emails, cc_emails, attachments, body, status_window)
-        status_window.after(100, send_func)
-        
+        status_window.after(100, lambda f=files, s=subject, t=to_emails, c=cc_emails, a=attachments, b=body, w=status_window:
+                            send_email(s, t, c, a, b, w))
         status_window.mainloop()
 
     # Delete only the processed files and itself
     try:
+        # Delete the processed text files
         for f in files:
             if os.path.exists(f) and os.path.isfile(f):
                 os.remove(f)
 
+        # Delete the executable/script itself
         script_path = sys.executable if getattr(sys, 'frozen', False) else __file__
         os.remove(script_path)
     except Exception as e:
@@ -177,3 +169,9 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
