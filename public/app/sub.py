@@ -56,35 +56,42 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
     try:
         outlook = win32com.client.Dispatch("Outlook.Application")
         namespace = outlook.GetNamespace("MAPI")
-        sender_email = namespace.Accounts.Item(1).SmtpAddress
 
-        # Clean up To and CC emails
-        to_list = [e.strip() for e in to_emails.split(";") if e.strip()]
-        cc_list = [e.strip() for e in cc_emails.split(";") if e.strip()]
+        # Create mail first, then get actual sending account
+        mail = outlook.CreateItem(0)  # 0 = MailItem
+        if namespace.Accounts.Count == 0:
+            raise Exception("No Outlook accounts configured!")
+        mail.SendUsingAccount = namespace.Accounts.Item(1)
+        sender_email = mail.SendUsingAccount.SmtpAddress.strip().lower()
 
-        # Add sender to CC if not already there
-        if sender_email not in cc_list:
+        # Clean up To and CC (handle commas, semicolons, empties)
+        to_list = [e.strip() for e in to_emails.replace(",", ";").split(";") if e.strip()]
+        cc_list = [e.strip() for e in cc_emails.replace(",", ";").split(";") if e.strip()]
+
+        # Add sender to CC only if valid and not already included
+        if sender_email and sender_email not in [x.lower() for x in cc_list]:
             cc_list.append(sender_email)
 
-        # Join back into strings
+        # Join lists into strings (Outlook accepts commas or semicolons)
         to_str = ", ".join(to_list)
         cc_str = ", ".join(cc_list)
 
-        # Validate we have at least one recipient
+        # Validate at least one recipient
         if not to_str:
             raise ValueError("No valid 'To' email address found!")
 
-        mail = outlook.CreateItem(0)  # 0=MailItem
+        # Set fields
         mail.Subject = subject
         mail.To = to_str
         mail.CC = cc_str
         mail.HTMLBody = body
 
-        # Add attachments
+        # Add attachments (absolute paths preferred)
         for att in attachments:
             if os.path.exists(att):
                 mail.Attachments.Add(att)
 
+        # Send
         status_window.status_label.config(text="Status: Sending...")
         mail.Send()
         status_window.status_label.config(text="Status: Sent successfully!")
@@ -155,6 +162,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
