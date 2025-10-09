@@ -57,57 +57,54 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
         outlook = win32com.client.Dispatch("Outlook.Application")
         namespace = outlook.GetNamespace("MAPI")
 
-        # Create mail first, then assign the same account that will send
-        mail = outlook.CreateItem(0)  # 0 = MailItem
-        if namespace.Accounts.Count == 0:
-            raise Exception("No Outlook accounts configured!")
+        # Find the first DSQ.qa account to use for sending
+        main_account = None
+        for acct in namespace.Accounts:
+            if acct.SmtpAddress.lower().endswith("@dsq.qa"):
+                main_account = acct
+                break
 
-        # Use the default Outlook sending account (the one used for manual sends)
-        mail.SendUsingAccount = namespace.Accounts.Item(1)
-        sender_email = ""
-        try:
-            sender_email = mail.SendUsingAccount.SmtpAddress
-        except Exception:
-            try:
-                sender_email = namespace.CurrentUser.AddressEntry.GetExchangeUser().PrimarySmtpAddress
-            except Exception:
-                sender_email = namespace.CurrentUser.Name
-        sender_email = sender_email.strip().lower()
+        if not main_account:
+            raise Exception("No DSQ.qa account found in Outlook!")
 
+        mail = outlook.CreateItem(0)  # MailItem
+        mail.SendUsingAccount = main_account
 
-        # Clean up To and CC (handle commas, semicolons, empties)
+        sender_email = main_account.SmtpAddress.lower()
+
+        # Clean up To and CC
         to_list = [e.strip() for e in to_emails.replace(",", ";").split(";") if e.strip()]
         cc_list = [e.strip() for e in cc_emails.replace(",", ";").split(";") if e.strip()]
 
-        # Join lists into strings (Outlook accepts commas or semicolons)
-        # Join lists into strings (Outlook accepts commas or semicolons)
-        to_str = ", ".join(to_list)
-        
-        # Always add sender email to CC (if not already there)
+        # Add sender to CC if not already there
         if sender_email and sender_email not in [e.lower() for e in cc_list]:
             cc_list.append(sender_email)
-        
+
+        to_str = ", ".join(to_list)
         cc_str = ", ".join(cc_list)
 
-
-        # Validate at least one recipient
         if not to_str:
             raise ValueError("No valid 'To' email address found!")
 
-        # Set fields
+        # Set email fields
         mail.Subject = subject
         mail.To = to_str
         mail.CC = cc_str
         mail.HTMLBody = body
 
-        # Add attachments (absolute paths preferred)
+        # Add attachments
         for att in attachments:
             if os.path.exists(att):
                 mail.Attachments.Add(att)
 
+        # Save in Sent Items of DSQ account
+        sent_folder = main_account.DeliveryStore.GetDefaultFolder(5)  # olFolderSentMail = 5
+        mail.SaveSentMessageFolder = sent_folder
+
         # Send
         status_window.status_label.config(text=f"Status: Sending via {sender_email}...")
         mail.Send()
+
         status_window.status_label.config(text="Status: Sent successfully!")
         status_window.after(3000, status_window.destroy)
 
@@ -176,6 +173,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
