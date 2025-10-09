@@ -57,43 +57,46 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
         outlook = win32com.client.Dispatch("Outlook.Application")
         namespace = outlook.GetNamespace("MAPI")
 
-        # Create mail first, then assign the same account that will send
+        # Create the mail
         mail = outlook.CreateItem(0)  # 0 = MailItem
-        if namespace.Accounts.Count == 0:
-            raise Exception("No Outlook accounts configured!")
 
-        # Use the default Outlook sending account (the one used for manual sends)
-        mail.SendUsingAccount = namespace.Accounts.Item(1)
-        sender_email = ""
-        try:
-            sender_email = mail.SendUsingAccount.SmtpAddress
-        except Exception:
+        # --- Find first DSQ.qa account ---
+        dsq_account = None
+        for acc in namespace.Accounts:
             try:
-                sender_email = namespace.CurrentUser.AddressEntry.GetExchangeUser().PrimarySmtpAddress
+                email = acc.SmtpAddress.strip().lower()
             except Exception:
-                sender_email = namespace.CurrentUser.Name
-        sender_email = sender_email.strip().lower()
+                try:
+                    email = acc.CurrentUser.AddressEntry.GetExchangeUser().PrimarySmtpAddress.strip().lower()
+                except Exception:
+                    continue
+            if email.endswith("@dsq.qa"):
+                dsq_account = acc
+                break
 
+        if not dsq_account:
+            raise Exception("No DSQ.qa account found in Outlook!")
 
-        # Clean up To and CC (handle commas, semicolons, empties)
+        mail.SendUsingAccount = dsq_account
+        sender_email = dsq_account.SmtpAddress.strip().lower()
+
+        # --- Clean up To and CC ---
         to_list = [e.strip() for e in to_emails.replace(",", ";").split(";") if e.strip()]
         cc_list = [e.strip() for e in cc_emails.replace(",", ";").split(";") if e.strip()]
 
-        # Join lists into strings (Outlook accepts commas or semicolons)
         to_str = ", ".join(to_list)
         cc_str = ", ".join(cc_list)
 
-        # Validate at least one recipient
         if not to_str:
             raise ValueError("No valid 'To' email address found!")
 
-        # Set fields
+        # --- Set fields ---
         mail.Subject = subject
         mail.To = to_str
         mail.CC = cc_str
         mail.HTMLBody = body
 
-        # Add attachments (absolute paths preferred)
+        # Add attachments
         for att in attachments:
             if os.path.exists(att):
                 mail.Attachments.Add(att)
@@ -107,7 +110,6 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
     except Exception as e:
         status_window.status_label.config(text=f"Status: Failed\n{e}")
         status_window.after(5000, status_window.destroy)
-
 class StatusWindow(tk.Tk):
     def __init__(self, to_emails, cc_emails, subject):
         super().__init__()
@@ -169,6 +171,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
