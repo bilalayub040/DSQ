@@ -1,7 +1,6 @@
 import os
 import sys
 import glob
-import shutil
 import datetime
 import win32com.client
 import tkinter as tk
@@ -18,7 +17,7 @@ def find_today_files(folder):
     files = []
     for f in glob.glob(os.path.join(folder, "*_submit_*.txt")):
         basename = os.path.basename(f)
-        name_part = os.path.splitext(basename)[0]  # remove .txt
+        name_part = os.path.splitext(basename)[0]
         if name_part.rsplit("_", 1)[-1].lower() == today_str.lower():
             files.append(f)
     return files
@@ -55,29 +54,25 @@ def parse_file(file_path):
 def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
     try:
         outlook = win32com.client.Dispatch("Outlook.Application")
-        namespace = outlook.GetNamespace("MAPI")
+        session = outlook.Session
 
-        # --- Find DSQ.qa account ---
-        dsq_account = None
-        for acc in namespace.Accounts:
-            if "dsq.qa" in acc.SmtpAddress.lower():
-                dsq_account = acc
-                break
+        # --- Get sender email (current default account) ---
+        try:
+            sender_email = session.CurrentUser.AddressEntry.GetExchangeUser().PrimarySmtpAddress
+        except Exception:
+            sender_email = session.CurrentUser.Name
+        sender_email = sender_email.strip().lower()
 
-        if not dsq_account:
-            raise Exception("No DSQ.qa account found in Outlook!")
-
-        sender_email = dsq_account.SmtpAddress.lower()
-
-        # --- Create the mail inside DSQ account’s store ---
-        draft_folder = dsq_account.DeliveryStore.GetDefaultFolder(16)  # olFolderDrafts = 16
-        mail = outlook.CreateItem(0)
-        mail.Move(draft_folder)  # move mail into DSQ Drafts (now belongs to that account)
-
-        # --- Clean recipients ---
+        # --- Prepare recipients ---
         to_list = [e.strip() for e in to_emails.replace(",", ";").split(";") if e.strip()]
         cc_list = [e.strip() for e in cc_emails.replace(",", ";").split(";") if e.strip()]
 
+        # Add sender to CC if not already there
+        if sender_email not in [e.lower() for e in cc_list]:
+            cc_list.append(sender_email)
+
+        # --- Create mail item ---
+        mail = outlook.CreateItem(0)  # MailItem
         mail.Subject = subject
         mail.To = "; ".join(to_list)
         mail.CC = "; ".join(cc_list)
@@ -88,11 +83,7 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
             if os.path.exists(att):
                 mail.Attachments.Add(att)
 
-        # --- Ensure Sent Items of same account ---
-        sent_folder = dsq_account.DeliveryStore.GetDefaultFolder(5)
-        mail.SaveSentMessageFolder = sent_folder
-
-        # --- Send email ---
+        # --- Send the email ---
         status_window.status_label.config(text=f"Status: Sending via {sender_email}...")
         mail.Send()
         status_window.status_label.config(text="Status: Sent successfully!")
@@ -100,7 +91,7 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
 
     except Exception as e:
         status_window.status_label.config(text=f"Status: Failed\n{e}")
-        status_window.after(6000, status_window.destroy)
+        status_window.after(5000, status_window.destroy)
 
 class StatusWindow(tk.Tk):
     def __init__(self, to_emails, cc_emails, subject):
@@ -109,8 +100,7 @@ class StatusWindow(tk.Tk):
         self.geometry("400x120+500+300")
         self.resizable(False, False)
         self.attributes("-topmost", True)
-
-        # --- Make draggable ---
+        # Make draggable
         self.bind("<ButtonPress-1>", self.start_move)
         self.bind("<ButtonRelease-1>", self.stop_move)
         self.bind("<B1-Motion>", self.do_move)
@@ -145,19 +135,15 @@ def main():
     for fpath in files:
         subject, to_emails, cc_emails, attachments, body = parse_file(fpath)
         status_window = StatusWindow(to_emails, cc_emails, subject)
-        status_window.after(
-            100,
-            lambda s=subject, t=to_emails, c=cc_emails, a=attachments, b=body, w=status_window:
-            send_email(s, t, c, a, b, w)
-        )
+        status_window.after(100, lambda s=subject, t=to_emails, c=cc_emails, a=attachments, b=body, w=status_window:
+                            send_email(s, t, c, a, b, w))
         status_window.mainloop()
 
-    # --- Cleanup processed files and itself ---
+    # --- Cleanup processed files and self ---
     try:
         for f in files:
             if os.path.exists(f) and os.path.isfile(f):
                 os.remove(f)
-
         script_path = sys.executable if getattr(sys, 'frozen', False) else __file__
         os.remove(script_path)
     except Exception as e:
@@ -165,4 +151,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
