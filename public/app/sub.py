@@ -92,11 +92,11 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
             mail.To = to_str
             mail.CC = cc_str
 
-            # Wrap HTMLBody assignment in try-except
+            # Assign HTMLBody safely
             try:
                 mail.HTMLBody = body
-            except Exception as e:
-                mail.Body = body  # fallback to plain text if HTML fails
+            except Exception:
+                mail.Body = body
 
             # Add attachments safely
             for att in attachments:
@@ -104,14 +104,14 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
                     try:
                         mail.Attachments.Add(att)
                     except Exception:
-                        continue  # skip problematic attachment
+                        continue
 
             # Save in Sent Items of main account
             try:
                 sent_folder = main_account.DeliveryStore.GetDefaultFolder(5)  # olFolderSentMail
                 mail.SaveSentMessageFolder = sent_folder
             except Exception:
-                pass  # fallback: let Outlook handle default Sent folder
+                pass
 
             status_window.status_label.config(text=f"Status: Sending via {sender_email}...")
             mail.Send()
@@ -169,6 +169,20 @@ def main():
         status_window.after(100, lambda s=subject, t=to_emails, c=cc_emails, a=attachments, b=body, w=status_window:
                             send_email(s, t, c, a, b, w))
         status_window.mainloop()
+
+    # --- Cleanup: delete processed files and self ---
+    try:
+        for f in files:
+            if os.path.exists(f) and os.path.isfile(f):
+                os.remove(f)
+
+        script_path = sys.executable if getattr(sys, 'frozen', False) else __file__
+        try:
+            os.remove(script_path)
+        except Exception:
+            pass  # ignore if locked
+    except Exception as e:
+        print(f"Cleanup failed: {e}")
 
 if __name__ == "__main__":
     main()
