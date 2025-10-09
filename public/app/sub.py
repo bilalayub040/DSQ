@@ -6,6 +6,7 @@ import datetime
 import win32com.client
 import tkinter as tk
 from tkinter import ttk
+import functools
 
 # --- Determine base directory properly for .exe ---
 if getattr(sys, 'frozen', False):
@@ -66,10 +67,7 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
             try:
                 email = acc.SmtpAddress.strip().lower()
             except Exception:
-                try:
-                    email = acc.CurrentUser.AddressEntry.GetExchangeUser().PrimarySmtpAddress.strip().lower()
-                except Exception:
-                    continue
+                continue
             if email.endswith("@dsq.qa"):
                 dsq_account = acc
                 break
@@ -96,7 +94,7 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
         if not to_str:
             raise ValueError("No valid 'To' email address found!")
 
-        # --- Set mail fields ---
+        # --- Set mail fields AFTER assigning account & folder ---
         mail.Subject = subject
         mail.To = to_str
         mail.CC = cc_str
@@ -159,18 +157,19 @@ def main():
     for fpath in files:
         subject, to_emails, cc_emails, attachments, body = parse_file(fpath)
         status_window = StatusWindow(to_emails, cc_emails, subject)
-        status_window.after(100, lambda f=files, s=subject, t=to_emails, c=cc_emails, a=attachments, b=body, w=status_window:
-                            send_email(s, t, c, a, b, w))
+        
+        # Use functools.partial to capture current variables correctly
+        send_func = functools.partial(send_email, subject, to_emails, cc_emails, attachments, body, status_window)
+        status_window.after(100, send_func)
+        
         status_window.mainloop()
 
     # Delete only the processed files and itself
     try:
-        # Delete the processed text files
         for f in files:
             if os.path.exists(f) and os.path.isfile(f):
                 os.remove(f)
 
-        # Delete the executable/script itself
         script_path = sys.executable if getattr(sys, 'frozen', False) else __file__
         os.remove(script_path)
     except Exception as e:
@@ -178,12 +177,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
-
