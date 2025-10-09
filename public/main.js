@@ -19,9 +19,12 @@ async function createWindow() {
             contextIsolation: false,
             webSecurity: false
         }
+            autoHideMenuBar: true, // <-- this hides the menu bar
     });
 
     await win.loadURL(mainUrl);
+win.setMenu(null);//removes the toolbarr
+
 }
 
 // ---------- File Picker ----------
@@ -66,3 +69,4 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
+
