@@ -892,7 +892,7 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
     const file1 = path.join(newFolderPath, `1_submit_${accountName}_${todayStr}.txt`);
     const file1Content = `Subject: Submission_${accountName}_${todayStr}
 To: ${toEmail.value.trim()}
-Cc: Cc: ${toCcCombined ? `${toCcCombined}, ${senderEmail}` : `${senderEmail}`}
+Cc: ${toCcCombined ? `${toCcCombined}, ${senderEmail}` : `${senderEmail}`}
 Attachments:
 ${attachmentsText}
 
@@ -1010,3 +1010,4 @@ Hi Team<br><br>Please action the below Account movement request:<br>${movementSt
 </script>
 </body>
 </html>
+
