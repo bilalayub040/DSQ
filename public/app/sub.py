@@ -55,14 +55,24 @@ def parse_file(file_path):
 def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
     try:
         outlook = win32com.client.Dispatch("Outlook.Application")
+        namespace = outlook.GetNamespace("MAPI")
+        sender_email = namespace.Accounts.Item(1).SmtpAddress  # Get first Outlook account's email
+
         mail = outlook.CreateItem(0)  # 0=MailItem
         mail.Subject = subject
         mail.To = to_emails.replace(";", ",")
-        mail.CC = cc_emails.replace(";", ",")
+        
+        # Add sender email to CC if not already there
+        cc_list = [e.strip() for e in cc_emails.split(";") if e.strip()]
+        if sender_email not in cc_list:
+            cc_list.append(sender_email)
+        mail.CC = ", ".join(cc_list)
+        
         mail.HTMLBody = body
         for att in attachments:
             if os.path.exists(att):
                 mail.Attachments.Add(att)
+        
         status_window.status_label.config(text="Status: Sending...")
         mail.Send()
         status_window.status_label.config(text="Status: Sent successfully!")
@@ -133,3 +143,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
