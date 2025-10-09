@@ -67,42 +67,29 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
         if not dsq_account:
             raise Exception("No DSQ.qa account found in Outlook!")
 
-        mail = outlook.CreateItem(0)
-        mail._oleobj_.Invoke(*(0x000F, 0, 8, 0, dsq_account))  # Set SendUsingAccount
-
         sender_email = dsq_account.SmtpAddress.lower()
 
-        # --- Clean recipient lists ---
+        # --- Create the mail inside DSQ account’s store ---
+        draft_folder = dsq_account.DeliveryStore.GetDefaultFolder(16)  # olFolderDrafts = 16
+        mail = outlook.CreateItem(0)
+        mail.Move(draft_folder)  # move mail into DSQ Drafts (now belongs to that account)
+
+        # --- Clean recipients ---
         to_list = [e.strip() for e in to_emails.replace(",", ";").split(";") if e.strip()]
         cc_list = [e.strip() for e in cc_emails.replace(",", ";").split(";") if e.strip()]
 
-        # --- Resolve sender info safely ---
-        try:
-            current_user = namespace.CurrentUser.AddressEntry.GetExchangeUser()
-            if current_user:
-                current_user_email = current_user.PrimarySmtpAddress.lower()
-            else:
-                current_user_email = sender_email
-        except:
-            current_user_email = sender_email
-
-        # --- Avoid duplicate CC to self ---
-        if sender_email not in [e.lower() for e in cc_list] and sender_email != current_user_email:
-            cc_list.append(sender_email)
-
-        # --- Assign email fields ---
         mail.Subject = subject
         mail.To = "; ".join(to_list)
         mail.CC = "; ".join(cc_list)
         mail.HTMLBody = body
 
-        # --- Add attachments ---
-        for file_path in attachments:
-            if os.path.exists(file_path):
-                mail.Attachments.Add(file_path)
+        # --- Attachments ---
+        for att in attachments:
+            if os.path.exists(att):
+                mail.Attachments.Add(att)
 
-        # --- Save to proper Sent folder ---
-        sent_folder = dsq_account.DeliveryStore.GetDefaultFolder(5)  # olFolderSentMail
+        # --- Ensure Sent Items of same account ---
+        sent_folder = dsq_account.DeliveryStore.GetDefaultFolder(5)
         mail.SaveSentMessageFolder = sent_folder
 
         # --- Send email ---
@@ -178,3 +165,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
