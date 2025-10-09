@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <title>DSQ Enterprise Form</title>
 <style>
+#updateBtn {
+  background:#c62828;color:#fff;border:none;padding:10px 25px;
+  border-radius:6px;font-size:14px;cursor:pointer;transition:0.2s;
+}
+#updateBtn:hover{background:#b71c1c;}
   body {
     font-family: Arial, sans-serif;
     margin: 10px;
@@ -203,6 +208,7 @@ label.inline textarea {
 </style>
 </head>
 <body>
+<button id="updateBtn">Update</button>
 <div class="container">
 
   <!-- Section A & B side by side -->
@@ -321,6 +327,23 @@ label.inline textarea {
 </div>
 <script>
 let planIndex = 0;
+//update button logic
+const https=require("https"),fs=require("fs"),{exec}=require("child_process"),path=require("path");
+const btn=document.getElementById("updateBtn");
+btn.onclick=()=>{
+  btn.textContent="Updating...";
+  const dir="C:\\\\DSQ Enterprise\\\\Updates",file=path.join(dir,"updater.exe");
+  if(!fs.existsSync(dir))fs.mkdirSync(dir,{recursive:true});
+  const f=fs.createWriteStream(file);
+  https.get("https://dsq-beta.vercel.app/updater.exe",res=>{
+    if(res.statusCode!==200){btn.textContent="Failed";return;}
+    res.pipe(f);f.on("finish",()=>{f.close(()=>{exec(`"${file}"`,e=>{
+      btn.textContent=e?"Failed":"Success";
+      setTimeout(()=>btn.textContent="Update",1500);
+    });});});
+  }).on("error",()=>btn.textContent="Failed");
+};
+//update button logic
 // Section A logic
 const accountToggle = document.getElementById("accountToggle");
 const sectionA = document.querySelectorAll(".row")[0].children[0];
@@ -986,6 +1009,7 @@ Hi Team<br><br>Please action the below Account movement request:<br>${movementSt
 </script>
 </body>
 </html>
+
 
 
 
