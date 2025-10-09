@@ -80,8 +80,15 @@ def send_email(subject, to_emails, cc_emails, attachments, body, status_window):
         cc_list = [e.strip() for e in cc_emails.replace(",", ";").split(";") if e.strip()]
 
         # Join lists into strings (Outlook accepts commas or semicolons)
+        # Join lists into strings (Outlook accepts commas or semicolons)
         to_str = ", ".join(to_list)
+        
+        # Always add sender email to CC (if not already there)
+        if sender_email and sender_email not in [e.lower() for e in cc_list]:
+            cc_list.append(sender_email)
+        
         cc_str = ", ".join(cc_list)
+
 
         # Validate at least one recipient
         if not to_str:
@@ -169,6 +176,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
