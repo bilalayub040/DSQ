@@ -136,25 +136,26 @@ def main():
     for fpath in files:
         subject, to_emails, cc_emails, attachments, body = parse_file(fpath)
         status_window = StatusWindow(to_emails, cc_emails, subject)
-        status_window.after(100, lambda: send_email(subject, to_emails, cc_emails, attachments, body, status_window))
+        status_window.after(100, lambda f=files, s=subject, t=to_emails, c=cc_emails, a=attachments, b=body, w=status_window:
+                            send_email(s, t, c, a, b, w))
         status_window.mainloop()
 
-    # Delete all files including itself and folder
+    # Delete only the processed files and itself
     try:
-        for f in os.listdir(folder):
-            file_path = os.path.join(folder, f)
-            if os.path.isfile(file_path):
-                os.remove(file_path)
-            elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)
-        # Delete folder itself
-        os.chdir(os.path.dirname(folder))
-        shutil.rmtree(folder)
+        # Delete the processed text files
+        for f in files:
+            if os.path.exists(f) and os.path.isfile(f):
+                os.remove(f)
+
+        # Delete the executable/script itself
+        script_path = sys.executable if getattr(sys, 'frozen', False) else __file__
+        os.remove(script_path)
     except Exception as e:
         print(f"Cleanup failed: {e}")
 
 if __name__ == "__main__":
     main()
+
 
 
 
