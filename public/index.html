@@ -129,7 +129,7 @@ Office.onReady(() => {
     `;
   });
 
-  // Email button: opens new email with HTML table and attaches current email
+  // Email button: opens new email with HTML table and attaches current email if possible
   document.getElementById('emailBtn').addEventListener('click', () => {
     const comments = document.getElementById('comments').value || '---';
     const tableHtml = document.getElementById('outputTable').outerHTML;
@@ -140,31 +140,27 @@ Office.onReady(() => {
       ${tableHtml}
     `;
 
-    // Get current email's itemId to attach
-    Office.context.mailbox.item.getItemIdAsync({}, function(result) {
-      if (result.status === Office.AsyncResultStatus.Succeeded) {
-        const itemId = result.value;
+    // Try to get current email itemId
+    Office.context.mailbox.item.getItemIdAsync(function(result) {
+        let attachments = [];
 
-        Office.context.mailbox.displayNewMessageForm({
-          toRecipients: ['qv@covalenseglobal.com'],
-          subject: 'DSQ Request',
-          htmlBody: bodyHtml,
-          attachments: [{
-            type: Office.MailboxEnums.AttachmentType.Item,
-            itemId: itemId,
-            name: 'CurrentEmail.msg'
-          }]
-        });
-      } else {
-        console.error('Could not get current email id:', result.error);
+        if (result.status === Office.AsyncResultStatus.Succeeded) {
+            attachments.push({
+                type: Office.MailboxEnums.AttachmentType.Item,
+                itemId: result.value,
+                name: 'CurrentEmail.msg'
+            });
+        } else {
+            console.warn('Could not get current email ID. Proceeding without attachment.');
+        }
 
-        // fallback: just open new email without attachment
+        // Open new email regardless
         Office.context.mailbox.displayNewMessageForm({
-          toRecipients: ['qv@covalenseglobal.com'],
-          subject: 'DSQ Request',
-          htmlBody: bodyHtml
+            toRecipients: ['qv@covalenseglobal.com'],
+            subject: 'DSQ Request',
+            htmlBody: bodyHtml,
+            attachments: attachments
         });
-      }
     });
   });
 });
