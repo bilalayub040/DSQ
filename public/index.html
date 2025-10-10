@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>DSQ Outlook Taskpane</title>
+<meta charset="UTF-8" />
+<title>DSQ Outlook Taskpane - Attach Same Email</title>
 <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 <style>
-  body { font-family: Arial; margin: 10px; font-size: 13px; }
+  body { font-family: Arial, sans-serif; margin: 10px; font-size: 13px; }
   label { display:block; margin-top:8px; }
-  input, select, textarea, button { margin-top:4px; padding:4px; width:100%; box-sizing:border-box; }
+  input, select, textarea, button { margin-top:6px; padding:6px; width:100%; box-sizing:border-box; }
+  .row { display:flex; gap:8px; }
   table { width:100%; border-collapse: collapse; margin-top:12px; }
   table, th, td { border:1px solid #999; }
   th, td { padding:6px; text-align:left; font-size:12px; }
@@ -41,11 +42,12 @@
 <label>Comments</label>
 <textarea id="comments" rows="3" placeholder="Enter comments"></textarea>
 
-<button id="generateBtn">Generate Table</button>
-<button id="emailBtn">Email (New Email)</button>
-<button id="attachEmailBtn">Attach Current Email</button>
+<div class="row">
+  <button id="generateBtn">Generate Table</button>
+  <button id="emailAttachBtn">Email & Attach Current Email</button>
+</div>
 
-<table id="outputTable">
+<table id="outputTable" aria-label="Generated table">
   <thead>
     <tr>
       <th style="background-color: yellow; font-weight:bold;">Account number/Sample #</th>
@@ -61,15 +63,8 @@
   </thead>
   <tbody>
     <tr>
-      <td>---</td>
-      <td>---</td>
-      <td>---</td>
-      <td>---</td>
-      <td>---</td>
-      <td>---</td>
-      <td>---</td>
-      <td>---</td>
-      <td>---</td>
+      <td>---</td><td>---</td><td>---</td><td>---</td><td>---</td>
+      <td>---</td><td>---</td><td>---</td><td>---</td>
     </tr>
   </tbody>
 </table>
@@ -84,7 +79,7 @@ Office.onReady(() => {
     dynamicContainer.innerHTML = '';
     extraInput = null;
     const val = modType.value;
-    if(val) {
+    if (val) {
       const label = document.createElement('label');
       label.textContent = val + ':';
       const input = document.createElement('input');
@@ -97,13 +92,13 @@ Office.onReady(() => {
     }
   });
 
-  const getFormData = () => {
-    const accountNumber = document.getElementById('accountNumber').value || '---';
-    const accountName = document.getElementById('accountName').value || '---';
-    const msisdns = document.getElementById('msisdns').value || '---';
-    const comments = document.getElementById('comments').value || '---';
+  function getFormData() {
+    const accountNumber = document.getElementById('accountNumber').value.trim() || '---';
+    const accountName = document.getElementById('accountName').value.trim() || '---';
+    const msisdns = document.getElementById('msisdns').value.trim() || '---';
+    const comments = document.getElementById('comments').value.trim() || '---';
     const modSelection = modType.value || '---';
-    const extraVal = extraInput ? extraInput.value || '---' : '---';
+    const extraVal = extraInput ? extraInput.value.trim() || '---' : '---';
 
     const simSerial = modSelection === 'Sim swap' ? extraVal : '---';
     const slVal = modSelection === 'S.L' ? extraVal : '---';
@@ -112,10 +107,9 @@ Office.onReady(() => {
     const tonVal = modSelection === 'TON' ? extraVal : '---';
 
     return { accountNumber, accountName, msisdns, comments, modSelection, simSerial, slVal, planChange, addonVal, tonVal };
-  };
+  }
 
-  document.getElementById('generateBtn').addEventListener('click', () => {
-    const data = getFormData();
+  function renderTaskpaneTable(data) {
     const tbody = document.querySelector('#outputTable tbody');
     tbody.innerHTML = `
       <tr>
@@ -130,9 +124,10 @@ Office.onReady(() => {
         <td>${data.comments}</td>
       </tr>
     `;
-  });
+  }
 
-  const generateTableHtml = (data) => {
+  function generateTableHtml(data) {
+    // Inline styles so Outlook respects them in the composed message.
     return `
       <table style="width:100%; border-collapse: collapse; border:1px solid #999;">
         <thead>
@@ -163,40 +158,114 @@ Office.onReady(() => {
         </tbody>
       </table>
     `;
-  };
+  }
 
-  // New email with table
-  document.getElementById('emailBtn').addEventListener('click', () => {
-    const data = getFormData();
-    const bodyHtml = `<p>Hi team,</p><p>Please action the below:</p>${data.comments}${generateTableHtml(data)}`;
-
-    Office.context.mailbox.displayNewMessageForm({
-      toRecipients: ['qv@covalenseglobal.com'],
-      subject: 'DSQ Request',
-      htmlBody: bodyHtml
-    });
+  document.getElementById('generateBtn').addEventListener('click', () => {
+    renderTaskpaneTable(getFormData());
   });
 
-  // Forward current email (attach current email)
-  document.getElementById('attachEmailBtn').addEventListener('click', () => {
+  // PRIMARY ACTION: Attempt to open ONE new email that includes the table AND attaches the current viewed email as a .msg
+  document.getElementById('emailAttachBtn').addEventListener('click', () => {
+    const data = getFormData();
+    const tableHtml = generateTableHtml(data);
+    const bodyHtml = `<p>Hi team,</p><p>Please action the below:</p><p>${escapeHtml(data.comments)}</p>${tableHtml}`;
+
+    // If there is a current item (we're in read mode), attempt to get its itemId to attach as an Item attachment
     const item = Office.context.mailbox.item;
-    if (item && item.itemType === Office.MailboxEnums.ItemType.Message) {
-      item.forwardAsync(
-        {
-          toRecipients: ['qv@covalenseglobal.com'],
-          subject: 'DSQ Request (Forwarded)',
-          htmlBody: '<p>See attached email with request table.</p>'
-        },
-        (result) => {
-          if (result.status !== Office.AsyncResultStatus.Succeeded) {
-            alert('Failed to attach current email.');
+    if (item && item.itemType === Office.MailboxEnums.ItemType.Message && item.getItemIdAsync) {
+      // Try to get the itemId
+      Office.context.mailbox.item.getItemIdAsync((res) => {
+        try {
+          if (res.status === Office.AsyncResultStatus.Succeeded && res.value) {
+            const itemId = res.value;
+            // Attempt to open new message with attachment
+            Office.context.mailbox.displayNewMessageForm({
+              toRecipients: ['qv@covalenseglobal.com'],
+              subject: 'DSQ Request',
+              htmlBody: bodyHtml,
+              attachments: [{
+                type: Office.MailboxEnums.AttachmentType.Item, // use enums for readability
+                itemId: itemId,
+                name: 'CurrentEmail.msg'
+              }]
+            });
+            return;
+          } else {
+            // Failed to retrieve itemId — fallback below
+            console.warn('getItemIdAsync failed or returned empty:', res.error || res);
+            fallbackForwardWithNotice(bodyHtml);
           }
+        } catch (e) {
+          console.error('Exception while attaching item:', e);
+          fallbackForwardWithNotice(bodyHtml);
         }
-      );
+      });
     } else {
-      alert('No current email available to attach.');
+      // No current item available (not read-mode) — just create new message with table
+      Office.context.mailbox.displayNewMessageForm({
+        toRecipients: ['qv@covalenseglobal.com'],
+        subject: 'DSQ Request',
+        htmlBody: bodyHtml
+      });
     }
   });
+
+  // Fallback: forward the current email and insert the table into the forward body
+  function fallbackForwardWithNotice(bodyHtml) {
+    try {
+      // notify user that direct .msg attach failed and we will forward instead
+      alert('Could not attach the current email as a .msg file. Falling back to forward — the original message will be included in the single email.');
+      const item = Office.context.mailbox.item;
+      if (item && item.forwardAsync) {
+        // Use forwardAsync to create a new email that contains the original message (forwarded)
+        item.forwardAsync(
+          { 
+            toRecipients: ['qv@covalenseglobal.com'],
+            // include the table + a note at top; forwardAsync will include the original message inline in the forward
+            htmlBody: `<p>Hi team,</p><p>Please action the below:</p>${bodyHtml}`
+          },
+          (result) => {
+            if (result.status !== Office.AsyncResultStatus.Succeeded) {
+              alert('Fallback forward failed. Opening a new blank email with the table (without attached original message).');
+              // last-resort: open a new blank message with the table only
+              Office.context.mailbox.displayNewMessageForm({
+                toRecipients: ['qv@covalenseglobal.com'],
+                subject: 'DSQ Request',
+                htmlBody: bodyHtml
+              });
+            }
+          }
+        );
+      } else {
+        // Can't forward (API missing) — open a new message without attachment
+        alert('Could not forward the current email. Opening a new email without attachment.');
+        Office.context.mailbox.displayNewMessageForm({
+          toRecipients: ['qv@covalenseglobal.com'],
+          subject: 'DSQ Request',
+          htmlBody: bodyHtml
+        });
+      }
+    } catch (err) {
+      console.error('fallbackForwardWithNotice exception', err);
+      alert('An unexpected error occurred. Opening a new email without attachment.');
+      Office.context.mailbox.displayNewMessageForm({
+        toRecipients: ['qv@covalenseglobal.com'],
+        subject: 'DSQ Request',
+        htmlBody: bodyHtml
+      });
+    }
+  }
+
+  // small helper to escape comments when inserting into body as text (we still use the tableHtml separately)
+  function escapeHtml(text) {
+    if (!text) return '';
+    return text
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
 
 });
 </script>
