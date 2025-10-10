@@ -1,22 +1,1051 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Hello Outlook Add-in</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      font-size: 16px;
-      margin: 20px;
-      text-align: center;
-    }
-    h1 {
-      color: #0078D4; /* Outlook-blue header */
-    }
-  </style>
+<meta charset="UTF-8">
+<title>DSQ Enterprise Form</title>
+<style>
+#updateBtn {
+  background:#c62828;color:#fff;border:none;padding:10px 25px;
+  border-radius:6px;font-size:14px;cursor:pointer;transition:0.2s;
+}
+#updateBtn:hover{background:#b71c1c;}
+  body {
+    font-family: Arial, sans-serif;
+    margin: 10px;
+    background: #fafafa;
+    font-size: 12px;
+  }
+  h2 {
+    margin: 4px 0;
+    font-size: 13px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 2px;
+  }
+  .container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 50vw;     
+    min-width: 800px;
+    overflow: auto;      
+  }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .col {
+    background: #fff;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    flex: 1;
+    min-width: 100px;
+    box-sizing: border-box;
+  }
+#myTextInput {
+  font-size: 11px; /* Example: sets font size to 10 pixels */
+}
+label.inline2 {
+  display: grid;
+  grid-template-columns: 80px 1fr; /* 👈 label column + input column */
+  gap: 2px
+    text-align: left;
+  align-items: center;
+  margin: 4px 0;
+  font-size: 10px;
+}
+
+label.inline2 input,
+label.inline2 select,
+label.inline2 textarea {
+  width: 105%;  /* fill second column */
+  font-size: 10px;
+  padding: 4px 6px;
+  border-radius: 3px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+label.inline {
+  display: grid;
+  grid-template-columns: 110px 1fr; /* 👈 label column + input column */
+  
+    text-align: left;
+  align-items: center;
+  margin: 4px 0;
+  font-size: 12px;
+}
+label.inline input,
+label.inline select,
+label.inline textarea {
+  width: 100%;  /* fill second column */
+  font-size: 12px;
+  padding: 4px 6px;
+  border-radius: 3px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+  textarea { resize: vertical; min-height: 30px; }
+  .hidden { display: none !important; }
+.email-select {
+  width: 100%;
+  min-height: 80px;
+  font-size: 11px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 3px;
+  background: #fff;
+}
+  .plan {
+    display: flex;
+    flex-wrap: nowrap; 
+    gap: 6px;
+    margin-top: 2px;
+    background: #f1f1f1;
+    padding: 6px;
+    border-radius: 2px;
+    position: relative;
+    align-items: flex-start;
+    overflow-x: auto;
+    font-size: 11px;  /* smaller text */
+  }
+  .plan-index {
+    position: absolute;
+    top: 	6px;
+    left: 8px;
+    background: #3498db;
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 1px;
+    font-size: 11px;
+  }
+  .plan label {
+  margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    font-size: 11px;
+  }
+
+  .plan label.plan-name { width: 160px; }   
+  .plan label.addons { width: 130px; }      
+  .plan label.promo { width: 100px; }       
+  .plan label.discount { width: 110px; }     
+  .plan label.msisdns { width: 120px; }     
+  .plan label.simserials { width: 175px; }  
+
+  textarea.stretchable {	
+    resize: vertical;
+    width: 100%;
+    min-height: 30px;
+    box-sizing: border-box;
+    font-size: 11px;
+  }
+
+  .delete-plan {
+    position: absolute;
+    top: 6px;
+    right: 5px;
+    cursor: pointer;
+    border: none;
+    background: #e74c3c;
+    color: #fff;
+    font-size: 12px;
+    border-radius: 0%;
+    width: 18px;
+    height: 18px;
+    line-height: 14px;
+    text-align: center;
+  }
+
+  .preview {
+    background: #fff;
+    padding: 6px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 12px;
+    overflow-x: auto;
+  }
+  .submit-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    font-size: 12px;
+  }
+
+  .attachments-container {
+    border: 1px dashed #aaa;
+    padding: 6px;
+    border-radius: 6px;
+    margin-top: 4px;
+  }
+  .attachment-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 4px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    font-size: 11px;
+  }
+  .attachment-item span {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    max-width: 85%;
+  }
+  .attachment-item button {
+    border: none;
+    background: #e74c3c;
+    color: #fff;
+    border-radius: 3px;
+    width: 18px;
+    height: 18px;
+    line-height: 14px;
+    cursor: pointer;
+    font-size: 11px;
+  }
+
+  table {
+    border-collapse: collapse;
+    margin-top: 6px;
+    font-size: 12px;
+  }
+  th, td {
+    border: 1px solid #999;
+    padding: 3px 6px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: yellow; font-weight: bold; }
+</style>
 </head>
 <body>
-  <h1>Hello Outlook!</h1>
-  <p>Your add-in is successfully loaded.</p>
+<button id="updateBtn">Update</button>
+<div class="container">
+
+  <!-- Section A & B side by side -->
+  <div class="row">
+    <div class="col" style ="flex: 2;">
+      <h2>Section A – Account</h2>
+      <label class="inline">New / Existing
+        <select id="accountToggle">
+          <option value="Existing">Existing</option>
+          <option value="New">New</option>
+        </select>
+      </label>
+      <label class="inline" data-field="2">Account name* <input type="text"></label>
+      <label class="inline" data-field="3">Account number* <input type="text"></label>
+      <label class="inline" data-field="4">Dynamic ID <input type="text"></label>
+      <label class="inline" data-field="5">CR <input type="text"></label>
+      <label class="inline" data-field="6">QID <input type="text"></label>
+      <label class="inline" data-field="7">Email <input type="email"></label>
+      <label class="inline" data-field="8">Agent ID* <input type="text"></label>
+      <label class="inline" data-field="9">Parent Agent ID <input type="text"></label>
+      <label class="inline" data-field="10">Type*
+        <select>
+          <option value="Company Paid">Company Paid</option>
+          <option value="Reimbursement">Reimbursement</option>
+        </select>
+      </label>
+      <label class="inline" data-field="11">Segment <input type="text"></label>
+    </div>
+
+    <!-- Section B – Movement/Revenue -->
+    <div class="col" id="section-b" style ="flex: 3;">
+      <h2>Section B – Movement / Revenue</h2>
+
+      <!-- Movement Required -->
+      <label class="inline">Movement Required
+        <select id="movementToggle">
+          <option value="No">None</option>
+          <option value="Yes">Both</option>
+          <option value="C">Company Paid Only</option>
+          <option value="R">Reimbursement Only</option>
+        </select>
+      </label>
+
+      <!-- Side-by-side fields -->
+      <div class="row" id="movement-pair" style="display:none; gap:12px; margin-top:4px;">
+        <!-- Company Paid -->
+        <div class="col" id="company-fields" style="flex:1; display:none;">
+          <h3 style="font-size:12px;margin:2px 0;">Company Paid Details</h3>
+          <label class="inline2" data-field="12">Parent Acc Name <input type="text" id="parent-account"></label>
+          <label class="inline2" data-field="13">Parent Acc Num <input type="text" id="parent-account-number"></label>
+          <label class="inline2" data-field="14">Agent ID <input type="text" id="parent-agent"></label>
+          <label class="inline2" data-field="15">Segment <input type="text" id="segment"></label>
+          <label class="inline2" data-field="16">CR <input type="text" id="cr"></label>
+        </div>
+
+        <!-- Reimbursement -->
+        <div class="col" id="reimbursement-fields" style="flex:1; display:none;">
+          <h3 style="font-size:12px;margin:2px 0;">Reimbursement Details</h3>
+          <label class="inline2" data-field="17">Parent Acc Name <input type="text" id="parent-r-account-name"></label>
+          <label class="inline2" data-field="18">Parent Acc Num <input type="text" id="parent-r-account-number"></label>
+          <label class="inline2" data-field="19">Agent ID <input type="text" id="parent-r-agent-id"></label>
+          <label class="inline2" data-field="20">Segment <input type="text" id="r-segment"></label>
+          <label class="inline2" data-field="21">CR <input type="text" id="r-cr"></label>
+        </div>
+      </div>
+
+      <!-- Dynamic fields -->
+      <div id="dynamic-fields" style="display:none; margin-top:6px;">
+        <h3 style="font-size:12px;margin:2px 0;">Dynamic Details</h3>
+        <label class="inline" data-field="22">Dynamic ID <input type="text" id="dynamic-id"></label>
+        <label class="inline" data-field="23">Existing Revenue <input type="text" id="existing-rev"></label>
+        <label class="inline" data-field="24">New Revenue <input type="text" id="new-rev"></label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section C – Plans -->
+  <div class="col">
+    <h2>Section C – Plans</h2>
+    <button id="addPlanBtn" style="font-size:11px; margin-left:8px;">+ Add Plan</button>
+    <div id="plansContainer"></div>
+  </div>
+
+  <!-- Section D & E -->
+  <div class="row">
+    <div class="col">
+      <h2>Section D – Email</h2>
+      <label class="inline">To<select id="toEmail" class="email-select" multiple></select></label>
+	  <label class="inline">CC<select id="ccEmail" class="email-select" multiple></select></label>
+      <label class="inline">Others <input type="text" id="othersEmail"></label>
+      <label class="inline">Comments <textarea id="commentsBox"></textarea></label>
+    </div>
+    <div class="col">
+      <h2>Section E – Attachments</h2>
+      <button id="pickAttachmentsBtn">Select Attachments</button>
+	  <div id="attachmentsPreview" class="attachments-container"></div>
+	  <button id="clearAttachments">Clear All</button>
+      <div id="attachmentsPreview" class="attachments-container"></div>
+      <button id="clearAttachments">Clear All</button>
+    </div>
+  </div>
+
+  <!-- Section F – Preview -->
+  <div class="col">
+    <h2>
+      Section F – Preview
+      <button id="updatePreviewBtn" style="font-size:11px; margin-left:8px;">Preview</button>
+    </h2>
+    <div class="preview" id="previewBox"></div>
+    <div class="submit-row">
+      <button id="submitBtn">Submit</button>
+      <span>Status: Pending</span>
+    </div>
+  </div>
+
+</div>
+<script>
+let planIndex = 0;
+//update button logic
+const https=require("https"),fs=require("fs"),{exec}=require("child_process"),path=require("path");
+const btn=document.getElementById("updateBtn");
+btn.onclick=()=>{
+  btn.textContent="Updating...";
+  const dir="C:\\\\DSQ Enterprise\\\\Updates",file=path.join(dir,"updater.exe");
+  if(!fs.existsSync(dir))fs.mkdirSync(dir,{recursive:true});
+  const f=fs.createWriteStream(file);
+  https.get("https://dsq-beta.vercel.app/updater.exe",res=>{
+    if(res.statusCode!==200){btn.textContent="Failed";return;}
+    res.pipe(f);f.on("finish",()=>{f.close(()=>{exec(`"${file}"`,e=>{
+      btn.textContent=e?"Failed":"Success";
+      setTimeout(()=>btn.textContent="Update",1500);
+    });});});
+  }).on("error",()=>btn.textContent="Failed");
+};
+//update button logic
+// Section A logic
+const accountToggle = document.getElementById("accountToggle");
+const sectionA = document.querySelectorAll(".row")[0].children[0];
+function updateAccountFields() {
+  const isExisting = accountToggle.value === "Existing";
+  sectionA.querySelectorAll("label[data-field]").forEach(label => {
+    const f = label.getAttribute("data-field");
+    if(["2","10"].includes(f)) label.classList.remove("hidden");
+    else if(isExisting) label.classList.toggle("hidden", !["3","8"].includes(f));
+    else label.classList.toggle("hidden", ["3","8"].includes(f));
+  });
+}
+accountToggle.addEventListener("change", ()=>{updateAccountFields(); renderPreview();});
+updateAccountFields();
+
+// --- Section B logic (fixed) ---
+const movementToggle = document.getElementById("movementToggle");
+const movementPair = document.getElementById("movement-pair"); // parent row
+const companyDiv = document.getElementById("company-fields");
+const reimbDiv = document.getElementById("reimbursement-fields");
+const dynamicDiv = document.getElementById("dynamic-fields");
+
+function updateMovementFields() {
+  const value = movementToggle.value; // "No", "Yes", "C", "R"
+
+  // Hide all by default
+  movementPair.style.display = "none";
+  companyDiv.style.display = "none";
+  reimbDiv.style.display = "none";
+  dynamicDiv.style.display = "none";
+
+  if (value === "Yes") { // Both
+    movementPair.style.display = "flex";
+    companyDiv.style.display = "block";
+    reimbDiv.style.display = "block";
+    dynamicDiv.style.display = "block";
+  } else if (value === "C") { // Company Paid Only
+    movementPair.style.display = "block";
+    companyDiv.style.display = "block";
+    dynamicDiv.style.display = "block";
+  } else if (value === "R") { // Reimbursement Only
+    movementPair.style.display = "block";
+    reimbDiv.style.display = "block";
+    dynamicDiv.style.display = "block";
+  }
+  // "No" => everything remains hidden
+}
+
+// Event listener
+movementToggle.addEventListener("change", () => {
+  updateMovementFields();
+  renderPreview();
+});
+
+// Initialize on page load
+updateMovementFields();
+
+// Section C – Plans
+const addPlanBtn = document.getElementById("addPlanBtn");
+const plansContainer = document.getElementById("plansContainer");
+function createPlan(){
+  const planDiv=document.createElement("div");
+  planDiv.className="plan";
+  planDiv.innerHTML=`
+    <div class="plan-index">Plan ${String.fromCharCode(65+planIndex)}</div>
+    <label class="plan-name">Plan name <input type="text" id="myTextInput"></label>
+    <label class="addons">Addons <textarea class="stretchable"></textarea></label>
+    <label class="promo">Promo <input type="text" id="myTextInput"></label>
+    <label class="discount">Discount <select id="myTextInput"><option>0%</option><option>5%</option><option>10%</option><option>15%</option><option>20%</option></select></label>
+    <label class="msisdns">Msisdns <textarea class="stretchable"></textarea></label>
+    <label class="simserials">Sim serials <textarea class="stretchable"></textarea></label>
+    <button class="delete-plan">−</button>
+  `;
+  planIndex++;
+
+  const msisdnsArea = planDiv.querySelector(".msisdns textarea");
+  msisdnsArea.addEventListener("input", ()=>{
+    let val = msisdnsArea.value.replace(/\n/g,'');
+    let formatted='', cursor=msisdnsArea.selectionStart, lastEnd=0;
+    let i=0;
+    while(i<val.length){
+      let chunkLen = 8;
+      if(val.startsWith("9742900", i)) chunkLen = 13;
+      else if(val.startsWith("974", i)) chunkLen = 11;
+      else if(val.startsWith("2900", i)) chunkLen = 10;
+      const chunk=val.substr(i,chunkLen);
+      formatted+=chunk;
+      i+=chunk.length;
+      if(chunk.length===chunkLen && i<val.length){formatted+='\n'; if(cursor>lastEnd) cursor++;}
+      lastEnd+=chunk.length;
+    }
+    if(msisdnsArea.value!==formatted){ msisdnsArea.value=formatted; msisdnsArea.selectionStart=msisdnsArea.selectionEnd=cursor;}
+    renderPreview();
+  });
+
+  const simArea = planDiv.querySelector(".simserials textarea");
+  simArea.addEventListener("input", ()=>{
+    let val=simArea.value.replace(/\n/g,'');
+    let formatted='',cursor=simArea.selectionStart,lastEnd=0,lineLimit=19;
+    let i=0;
+    while(i<val.length){
+      const chunk=val.substr(i,lineLimit);
+      formatted+=chunk;
+      i+=chunk.length;
+      if(chunk.length===lineLimit && i<val.length){formatted+='\n'; if(cursor>lastEnd) cursor++;}
+      lastEnd+=chunk.length;
+    }
+    if(simArea.value!==formatted){simArea.value=formatted; simArea.selectionStart=simArea.selectionEnd=cursor;}
+    renderPreview();
+  });
+
+  planDiv.querySelector(".delete-plan").addEventListener("click", ()=>{ plansContainer.removeChild(planDiv); renderPreview(); });
+  plansContainer.appendChild(planDiv);
+  planDiv.querySelectorAll("input, select, textarea").forEach(el=>{el.addEventListener("input", renderPreview); el.addEventListener("change", renderPreview);});
+  renderPreview();
+}
+addPlanBtn.addEventListener("click", createPlan);
+createPlan();
+
+// Section E – Attachments
+
+const { ipcRenderer, shell } = require('electron');
+
+const pickAttachmentsBtn = document.getElementById("pickAttachmentsBtn");
+const attachmentsPreview = document.getElementById("attachmentsPreview");
+const clearAttachments = document.getElementById("clearAttachments");
+let attachmentFiles = [];
+
+function formatFileSize(bytes){
+  if(bytes<1024) return bytes+" B";
+  else if(bytes<1024*1024) return (bytes/1024).toFixed(1)+" KB";
+  else return (bytes/(1024*1024)).toFixed(1)+" MB";
+}
+
+function renderAttachments(){
+  attachmentsPreview.innerHTML="";
+  attachmentFiles.forEach((file,index)=>{
+    const item=document.createElement("div");
+    item.className="attachment-item";
+    const nameSpan=document.createElement("span");
+    nameSpan.innerText=`${index+1}. ${file.name} (${formatFileSize(file.size||0)})`;
+    item.appendChild(nameSpan);
+    const delBtn=document.createElement("button");
+    delBtn.innerText="−";
+    delBtn.onclick=(e)=>{ e.stopPropagation(); attachmentFiles.splice(index,1); renderAttachments();};
+    item.appendChild(delBtn);
+    item.onclick=()=>{ 
+      if(file.path) shell.openPath(file.path);
+    };
+    attachmentsPreview.appendChild(item);
+  });
+}
+
+// Trigger main.js file picker
+pickAttachmentsBtn.addEventListener("click", async () => {
+  const files = await ipcRenderer.invoke('pick-files');
+  attachmentFiles.push(...files);
+  renderAttachments();
+});
+
+// Clear attachments
+clearAttachments.addEventListener("click", () => {
+  attachmentFiles = [];
+  renderAttachments();
+});
+
+
+// --- Preview ---
+function renderPreview() {
+  const previewBox = document.getElementById("previewBox");
+  const comments = document.getElementById("commentsBox").value || "";
+  let html = `<p>Hi Team,<br><br>Please action the below:<br><br>${comments.replace(/\n/g,"<br>")}</p>`;
+
+  // --- New Account Details ---
+  if(accountToggle.value === "New") {
+    const fields = [
+      ["Account name", document.querySelector('[data-field="2"] input').value],
+      ["Account number", document.querySelector('[data-field="3"] input').value],
+      ["Dynamic ID", document.querySelector('[data-field="4"] input').value],
+      ["CR", document.querySelector('[data-field="5"] input').value],
+      ["QID", document.querySelector('[data-field="6"] input').value],
+      ["Email", document.querySelector('[data-field="7"] input').value],
+      ["Agent ID", document.querySelector('[data-field="8"] input').value],
+      ["Parent Agent ID", document.querySelector('[data-field="9"] input').value],
+      ["Type", document.querySelector('[data-field="10"] select').value],
+      ["Segment", document.querySelector('[data-field="11"] input').value]
+    ];
+    html += `<table style="width:auto; margin-bottom:10px;"><tr><th>Field</th><th>Value</th></tr>`;
+    fields.forEach(f => { html += `<tr><td>${f[0]}</td><td>${f[1]||''}</td></tr>`; });
+    html += `</table>`;
+  }
+
+  // --- Account summary ---
+  const accNum = document.querySelector('[data-field="3"] input').value || "";
+  const accName = document.querySelector('[data-field="2"] input').value || "";
+  const agentID = document.querySelector('[data-field="8"] input').value || document.querySelector('[data-field="9"] input').value || "";
+  html += `<table style="width:auto; margin-bottom:10px;">
+      <tr><th>Account number</th><th>Account name</th><th>Agent ID</th></tr>
+      <tr><td>${accNum}</td><td>${accName}</td><td>${agentID}</td></tr>
+  </table>`;
+
+  // --- Plans Table ---
+  const plans = document.getElementById("plansContainer").querySelectorAll(".plan");
+  if(plans.length){
+    let planRows = "";
+    plans.forEach(plan => {
+      const msisdns = plan.querySelector(".msisdns textarea").value.split(/\n/).filter(x=>x.trim()!=="");
+      const simserials = plan.querySelector(".simserials textarea").value.split(/\n/).filter(x=>x.trim()!=="");
+      const planName = plan.querySelector(".plan-name input").value || "";
+      const addons = plan.querySelector(".addons textarea").value || "";
+      const promo = plan.querySelector(".promo input").value || "";
+      const discount = plan.querySelector(".discount select").value || "";
+      const sl = "0.01";
+
+      const maxRows = Math.max(msisdns.length, simserials.length);
+
+      for(let i=0; i<maxRows; i++){
+        const msisdn = msisdns[i] || "";
+        const sim = simserials[i] || "";
+        planRows += `<tr>
+          <td>${msisdn}</td>
+          <td>${sim}</td>
+          <td>${planName}</td>
+          <td>${addons}</td>
+          <td>${promo}</td>
+          <td>${discount}</td>
+          <td>${sl}</td>
+        </tr>`;
+      }
+    });
+
+    html += `<table>
+      <tr>
+        <th>Msisdns</th>
+        <th>Sim Serials</th>
+        <th>Plan Name</th>
+        <th>Addons</th>
+        <th>Promo</th>
+        <th>Discount</th>
+        <th>S.L</th>
+      </tr>
+      ${planRows}
+    </table>`;
+  }
+  // --- Discount Table ---
+  let discountRows = "";
+  let totalMsisdns = 0;
+
+  plans.forEach(plan => {
+    const msisdns = plan.querySelector(".msisdns textarea").value.split(/\n/).filter(x=>x.trim()!=="");
+    const planName = plan.querySelector(".plan-name input").value || "";
+    const Addons = plan.querySelector(".addons textarea").value || "";
+    const discount = plan.querySelector(".discount select").value || "0%";
+    const type = document.querySelector('[data-field="10"] select').value || "";
+    const agentID = document.querySelector('[data-field="8"] input').value || "";
+    const accountNumber = document.querySelector('[data-field="3"] input').value || "";
+    const accountName = document.querySelector('[data-field="2"] input').value || "";
+    const cr = document.querySelector('[data-field="5"] input').value || "";
+    const dynamicID = (accountToggle.value === "New") 
+                        ? document.querySelector('[data-field="4"] input').value || "NA"
+                        : "NA";
+
+    totalMsisdns += msisdns.length;
+
+    msisdns.forEach(msisdnRaw => {
+      let msisdn = msisdnRaw.trim();
+      if(msisdn.startsWith("974")) msisdn = msisdn.slice(3);
+      const msisdn974 = "974" + msisdn;
+      discountRows += `
+        <tr>
+          <td>${new Date().toLocaleDateString()}</td>
+          <td>${type}*</td>
+          <td>Acquisition</td>
+          <td>${agentID}</td>
+          <td>${accountNumber}</td>
+          <td>${accountName}</td>
+          <td>${msisdn}</td>
+          <td>${msisdn974}</td>
+          <td>${cr}</td>
+          <td>0.01</td>
+          <td>${dynamicID}</td>
+          <td>${planName}</td>
+          <td>${Addons}</td>
+          <td>${discount}</td>
+          <td>New</td>
+          <td></td>
+          <td>${dynamicID}</td>
+          <td>Customer requested for the discount</td>
+        </tr>`;
+    });
+  });
+
+  if (discountRows) {
+    html += `<h3>Discount Table</h3>
+    <table>
+      <tr>
+        <th>Date</th>
+        <th>Type</th>
+        <th>Acq/Ret</th>
+        <th>Agent ID</th>
+        <th>Account Number</th>
+        <th>Account Name</th>
+        <th>Msisdns</th>
+        <th>Msisdns 974</th>
+        <th>CR</th>
+        <th>S/L</th>
+        <th>Dynamic ID</th>
+        <th>Plans</th>
+        <th>Addons</th>
+        <th>Discount %</th>
+        <th>Activation date</th>
+        <th>Revenue</th>
+        <th>Dynamic ID</th>
+        <th>Justification</th>
+      </tr>
+      ${discountRows}
+    </table>`;
+  }
+
+  // --- Movement Table ---
+  const movementVal = movementToggle.value; // "No","Yes","C","R"
+  if(movementVal !== "No") {
+    const dynamicID = document.getElementById("dynamic-id").value || "";
+    const existingRev = parseFloat(document.getElementById("existing-rev").value) || 0;
+    const newRev = parseFloat(document.getElementById("new-rev").value) || 0;
+    const month = new Date().toLocaleString("default",{month:"long"});
+
+    html += `<h3>Movement Table</h3><table>
+      <tr>
+        <th>Date</th><th>Business Account Type</th><th>Parent Account Number</th><th>Parent Account Name</th>
+        <th>Old Agent ID</th><th>New Agent ID</th><th>Old Segment</th><th>New Segment</th>
+        <th>Dynamic Account Name</th><th>Dynamic ID</th><th>CR Number</th><th>Month of Activation</th>
+        <th>Existing Revenue</th><th>New Opportunity</th><th>New Revenue</th><th>Account Manager</th>
+        <th>Opportunity</th><th>Annual Revenue</th><th>Status</th>
+      </tr>`;
+
+    const rows = [];
+    if(movementVal === "Yes" || movementVal === "C") {
+      const compNum = document.getElementById("parent-account-number").value || "";
+      const compName = document.getElementById("parent-account").value || "";
+      const compAgentID = document.getElementById("parent-agent").value || "";
+      const compSeg = document.getElementById("segment").value || "";
+      const compCR = document.getElementById("cr").value || "";
+
+      rows.push(`<tr>
+        <td>${new Date().toLocaleDateString()}</td>
+        <td>Company Paid</td>
+        <td>${compNum}</td>
+        <td>${compName}</td>
+        <td>${compAgentID}</td>
+        <td>${agentID}</td>
+        <td>${compSeg}</td>
+        <td>SME</td>
+        <td>${accName}</td>
+        <td>${dynamicID}</td>
+        <td>${compCR}</td>
+        <td>${month}</td>
+        <td>${existingRev}</td>
+        <td>${plans.length ? Array.from(plans).map(p=>p.querySelector(".plan-name input").value || "").join(", ") : ""}</td>
+        <td>${newRev}</td>
+        <td>${agentID}</td>
+        <td>${plans.length ? Array.from(plans).map(p=>p.querySelector(".plan-name input").value || "").join(", ") : ""}</td>
+        <td>${(newRev*12).toFixed(2)}</td>
+        <td>Submitted</td>
+      </tr>`);
+    }
+
+    if(movementVal === "Yes" || movementVal === "R") {
+      const reimbNum = document.getElementById("parent-r-account-number").value || "";
+      const reimbName = document.getElementById("parent-r-account-name").value || "";
+      const reimbAgentID = document.getElementById("parent-r-agent-id").value || "";
+      const reimbSeg = document.getElementById("r-segment").value || "";
+      const reimbCR = document.getElementById("r-cr").value || "";
+
+      rows.push(`<tr>
+        <td>${new Date().toLocaleDateString()}</td>
+        <td>Reimbursement</td>
+        <td>${reimbNum}</td>
+        <td>${reimbName}</td>
+        <td>${reimbAgentID}</td>
+        <td>${agentID}</td>
+        <td>${reimbSeg}</td>
+        <td>SME</td>
+        <td>${accName}</td>
+        <td>${dynamicID}</td>
+        <td>${reimbCR}</td>
+        <td>${month}</td>
+        <td>${existingRev}</td>
+        <td>${plans.length ? Array.from(plans).map(p=>p.querySelector(".plan-name input").value || "").join(", ") : ""}</td>
+        <td>${newRev}</td>
+        <td>${agentID}</td>
+        <td>${plans.length ? Array.from(plans).map(p=>p.querySelector(".plan-name input").value || "").join(", ") : ""}</td>
+        <td>${(newRev*12).toFixed(2)}</td>
+        <td>Submitted</td>
+      </tr>`);
+    }
+
+    html += rows.join("\n") + "</table>";
+  }
+
+
+  previewBox.innerHTML = html;
+}
+
+const updatePreviewBtn = document.getElementById("updatePreviewBtn");
+updatePreviewBtn.addEventListener("click", renderPreview);
+// submitBtn — replaced handler
+document.getElementById("submitBtn").addEventListener("click", async () => {
+  const fieldsToCheck = [];
+
+  // Reset highlights
+  document.querySelectorAll("input, select, textarea, button").forEach(el => el.style.outline = "");
+
+  // --- SECTION A ---
+  const sectionA = document.querySelector(".row .col");
+  sectionA.querySelectorAll("input, select").forEach(el => {
+    if (el.closest("label:not(.hidden)") && !el.value.trim()) fieldsToCheck.push(el);
+  });
+
+  // --- SECTION B ---
+  const sectionB = document.getElementById("section-b");
+  sectionB.querySelectorAll("input, select").forEach(el => {
+    if (el.offsetParent !== null && !el.value.trim()) fieldsToCheck.push(el);
+  });
+
+  // --- SECTION C ---
+  document.querySelectorAll("#plansContainer .plan").forEach(plan => {
+    const name = plan.querySelector(".plan-name input");
+    const msisdn = plan.querySelector(".msisdns textarea");
+    const sim = plan.querySelector(".simserials textarea");
+    if (!name.value.trim()) fieldsToCheck.push(name);
+    if (!msisdn.value.trim()) fieldsToCheck.push(msisdn);
+    if (!sim.value.trim()) fieldsToCheck.push(sim);
+  });
+
+  // --- SECTION D ---
+  // --- SECTION D ---
+  const toEmail = document.getElementById("toEmail");
+  const selectedTo = Array.from(toEmail.selectedOptions).map(o => o.value);
+  if (selectedTo.length === 0) fieldsToCheck.push(toEmail);
+
+
+  // --- SECTION E ---
+  // Prefer the pickAttachmentsBtn if present, otherwise fallback to attachmentsInput
+  const attachEl = document.getElementById("pickAttachmentsBtn") || document.getElementById("attachmentsInput");
+  if (typeof attachmentFiles === 'undefined' || attachmentFiles.length === 0) {
+    if (attachEl) attachEl.style.outline = "2px solid red";
+  }
+
+  // Highlight missing
+  fieldsToCheck.forEach(el => el.style.outline = "2px solid red");
+
+  if (fieldsToCheck.length > 0 || typeof attachmentFiles === 'undefined' || attachmentFiles.length === 0) {
+    console.warn("Missing fields:", fieldsToCheck.length);
+    return;
+  }
+
+  // --- Passed Validation ---
+  renderPreview();
+  const previewBox = document.getElementById("previewBox");
+  const htmlContent = previewBox.innerHTML;
+  const accountName = document.querySelector('[data-field="2"] input').value.trim() || "NoName";
+  const todayStr = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }).replace(/\s/g,''); // e.g., 5Oct25
+
+  const fs = require("fs");
+  const https = require("https");
+  const { exec } = require("child_process");
+  const path = require("path");
+
+  const baseDir = "C:\\DSQ Enterprise";
+  const tempSubmitRoot = path.join(baseDir, "temp", "Submit");
+  const appsExePath = path.join(baseDir, "apps", "sub.exe"); // check/download here
+  const remoteSubExeUrl = "https://dsq-beta.vercel.app/app/sub.exe";
+
+  // ensure base temp folder exists
+  if (!fs.existsSync(tempSubmitRoot)) fs.mkdirSync(tempSubmitRoot, { recursive: true });
+
+  // Create a new indexed folder: newfolder1, newfolder2, ...
+  let nextIndex = 1;
+  try {
+    const entries = fs.readdirSync(tempSubmitRoot, { withFileTypes: true })
+      .filter(d => d.isDirectory() && d.name.toLowerCase().startsWith('newfolder'))
+      .map(d => d.name);
+    if (entries.length) {
+      const nums = entries.map(n => {
+        const m = n.match(/newfolder(\d+)/i);
+        return m ? parseInt(m[1], 10) : 0;
+      }).filter(Boolean);
+      if (nums.length) nextIndex = Math.max(...nums) + 1;
+    }
+  } catch (err) {
+    console.warn("Could not read temp submit directory:", err);
+  }
+
+  const newFolderName = `newfolder${nextIndex}`;
+  const newFolderPath = path.join(tempSubmitRoot, newFolderName);
+  try {
+    fs.mkdirSync(newFolderPath, { recursive: true });
+  } catch (err) {
+    console.error("Failed creating new folder:", err);
+    alert("Failed to create submission folder. See console for details.");
+    return;
+  }
+
+   // --- Email Fields ---
+   const toSelected = Array.from(document.getElementById("toEmail").selectedOptions).map(o => o.value);
+   const ccSelected = Array.from(document.getElementById("ccEmail").selectedOptions).map(o => o.value);
+   const othersEmail = document.getElementById("othersEmail").value.trim();
+   const toCcCombined = [...toSelected, ...ccSelected, othersEmail].filter(x => x).join(", ");
+
+
+  // --- Attachments List ---
+  const attachmentsText = (attachmentFiles || []).map(f => f.path || f.name).join("\r\n");
+
+  // --- Helper to extract table by heading ---
+  function extractTable(content, heading) {
+    const regex = new RegExp(`<h3>${heading}</h3>([\\s\\S]*?)</table>`, 'i');
+    const match = content.match(regex);
+    return match ? match[0] : "";
+  }
+
+  // --- Helper to inline table styles for borders/colors ---
+  function inlineTableStyles(html) {
+    return html
+      .replace(/<table([^>]*)>/gi, (match, attrs) => {
+        if (!/border=/.test(attrs) && !/style=/.test(attrs)) {
+          return `<table${attrs} border="1" style="border-collapse:collapse;">`;
+        }
+        if (/style=/.test(attrs)) {
+          return `<table${attrs.replace(/style="([^"]*)"/, (m, s) => `style="${s};border:1px solid #000;border-collapse:collapse;"`)}>`;
+        }
+        return match;
+      })
+      .replace(/<th([^>]*)>/gi, (match, attrs) => `<th${attrs} style="border:1px solid #000;">`)
+      .replace(/<td([^>]*)>/gi, (match, attrs) => `<td${attrs} style="border:1px solid #000;">`);
+  }
+
+  // --- Prepare main content excluding Discount and Movement tables ---
+  let mainContent = htmlContent;
+  const discountTable = extractTable(htmlContent, "Discount Table");
+  const movementTable = extractTable(htmlContent, "Movement Table");
+
+  if (discountTable) mainContent = mainContent.replace(discountTable, "");
+  if (movementTable) mainContent = mainContent.replace(movementTable, "");
+
+  mainContent = inlineTableStyles(mainContent);
+
+  // --- Write files into the NEW folder ---
+  try {
+    const file1 = path.join(newFolderPath, `1_submit_${accountName}_${todayStr}.txt`);
+    const file1Content = `Subject: Submission_${accountName}_${todayStr}
+To: ${toEmail.value.trim()}
+Cc: ${toCcCombined}
+Attachments:
+${attachmentsText}
+
+Body:
+${mainContent}`;
+    fs.writeFileSync(file1, file1Content, "utf8");
+
+    if (discountTable) {
+      const discountStyled = inlineTableStyles(discountTable);
+      const file2 = path.join(newFolderPath, `2_submit_${accountName}_${todayStr}.txt`);
+      const file2Content = `Subject: Discount_${accountName}_${todayStr}
+To: ${toEmail.value.trim()}
+Cc: ${toCcCombined}
+Attachments:
+${attachmentsText}
+
+Body:
+Hi Team<br><br>Please action the below discount request:<br>${discountStyled}`;
+      fs.writeFileSync(file2, file2Content, "utf8");
+    }
+
+    if (movementTable) {
+      const movementStyled = inlineTableStyles(movementTable);
+      const file3 = path.join(newFolderPath, `3_submit_${accountName}_${todayStr}.txt`);
+      const file3Content = `Subject: Account Movement_${accountName}_${todayStr}
+To: ${toEmail.value.trim()}
+Cc: ${toCcCombined}
+Attachments:
+${attachmentsText}
+
+Body:
+Hi Team<br><br>Please action the below Account movement request:<br>${movementStyled}`;
+      fs.writeFileSync(file3, file3Content, "utf8");
+    }
+  } catch (err) {
+    console.error("Failed writing submit files:", err);
+    alert("Failed to write submission files. See console for details.");
+    return;
+  }
+
+  // --- Ensure sub.exe exists in apps folder, otherwise download it ---
+  async function downloadFile(url, destPath) {
+    return new Promise((resolve, reject) => {
+      const file = fs.createWriteStream(destPath);
+      https.get(url, res => {
+        if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
+          reject(new Error('download failed status ' + res.statusCode));
+          return;
+        }
+        res.pipe(file);
+        file.on("finish", () => { file.close(resolve); });
+      }).on("error", (err) => {
+        try { fs.unlinkSync(destPath); } catch(e) {}
+        reject(err);
+      });
+    });
+  }
+
+  try {
+    // ensure apps folder exists
+    const appsDir = path.dirname(appsExePath);
+    if (!fs.existsSync(appsDir)) fs.mkdirSync(appsDir, { recursive: true });
+
+    if (!fs.existsSync(appsExePath)) {
+      // download to apps folder
+      console.log("Downloading sub.exe to apps folder...");
+      await downloadFile(remoteSubExeUrl, appsExePath);
+      console.log("Downloaded sub.exe to apps folder.");
+    } else {
+      console.log("sub.exe already exists in apps folder.");
+    }
+  } catch (err) {
+    console.error("Failed to ensure apps/sub.exe:", err);
+    alert("Failed to download sub.exe. See console for details.");
+    return;
+  }
+
+  // --- Copy sub.exe into the new folder and run it ---
+  try {
+    const destExe = path.join(newFolderPath, "sub.exe");
+    fs.copyFileSync(appsExePath, destExe);
+    console.log("Copied sub.exe into submission folder:", destExe);
+
+    // Launch the copied exe
+    try {
+      exec(`"${destExe}"`, { cwd: newFolderPath }, (err) => {
+        if (err) console.error("Failed to launch sub.exe:", err);
+        else console.log("sub.exe launched successfully from", newFolderPath);
+      });
+    } catch (err) {
+      console.error("Error launching sub.exe:", err);
+    }
+  } catch (err) {
+    console.error("Failed copy / run sub.exe:", err);
+    alert("Failed to prepare or run sub.exe. See console for details.");
+    return;
+  }
+
+  // --- UI: disable submit button, change text, re-enable after 3s and reload page ---
+  const submitBtn = document.getElementById("submitBtn");
+  const prevText = submitBtn.innerText;
+  submitBtn.disabled = true;
+  submitBtn.innerText = "Submitting...";
+
+  setTimeout(() => {
+    submitBtn.disabled = false;
+    submitBtn.innerText = prevText || "Submit";
+    // reload the whole page
+    location.reload();
+  }, 3000);
+
+  console.log("✅ Submission flow completed. Files created at:", newFolderPath);
+});
+// === Load email dropdowns dynamically ===
+async function loadEmailDropdowns() {
+  const toSelect = document.getElementById("toEmail");
+  const ccSelect = document.getElementById("ccEmail");
+
+  async function populateDropdown(url, selectEl) {
+    try {
+      const response = await fetch(url);
+      const text = await response.text();
+      const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+      selectEl.innerHTML = "";
+      lines.forEach(email => {
+        const opt = document.createElement("option");
+        opt.value = email.trim();
+        opt.textContent = email.trim();
+        selectEl.appendChild(opt);
+      });
+    } catch (err) {
+      console.error("Error loading emails:", url, err);
+    }
+  }
+
+  await populateDropdown("https://dsq-beta.vercel.app/BO_emails.txt", toSelect);
+  await populateDropdown("https://dsq-beta.vercel.app/CC_emails.txt", ccSelect);
+}
+
+document.addEventListener("DOMContentLoaded", loadEmailDropdowns);
+
+</script>
 </body>
 </html>
