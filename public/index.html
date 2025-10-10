@@ -99,7 +99,7 @@ Office.onReady(() => {
     }
   });
 
-  // Generate table values
+  // Generate table values for taskpane display
   document.getElementById('generateBtn').addEventListener('click', () => {
     const accountNumber = document.getElementById('accountNumber').value || '---';
     const accountName = document.getElementById('accountName').value || '---';
@@ -130,10 +130,51 @@ Office.onReady(() => {
     `;
   });
 
-  // Email button using correct Office.js API
+  // Email button: opens new email with inline-styled table
   document.getElementById('emailBtn').addEventListener('click', () => {
+    const accountNumber = document.getElementById('accountNumber').value || '---';
+    const accountName = document.getElementById('accountName').value || '---';
+    const msisdns = document.getElementById('msisdns').value || '---';
     const comments = document.getElementById('comments').value || '---';
-    const tableHtml = document.getElementById('outputTable').outerHTML;
+    const modSelection = modType.value || '---';
+    const extraVal = extraInput ? extraInput.value || '---' : '---';
+
+    const simSerial = modSelection === 'Sim swap' ? extraVal : '---';
+    const slVal = modSelection === 'S.L' ? extraVal : '---';
+    const planChange = modSelection === 'Plan change' ? extraVal : '---';
+    const addonVal = modSelection === 'Addon' ? extraVal : '---';
+    const tonVal = modSelection === 'TON' ? extraVal : '---';
+
+    const tableHtml = `
+      <table style="width:100%; border-collapse: collapse; border:1px solid #999;">
+        <thead>
+          <tr>
+            <th style="border:1px solid #999; background-color: yellow; font-weight:bold; padding:6px;">Account number/Sample #</th>
+            <th style="border:1px solid #999; background-color: yellow; font-weight:bold; padding:6px;">Account name</th>
+            <th style="border:1px solid #999; background-color: yellow; font-weight:bold; padding:6px;">Msisdn(s)</th>
+            <th style="border:1px solid #999; background-color: yellow; font-weight:bold; padding:6px;">Sim serial(s)</th>
+            <th style="border:1px solid #999; background-color: yellow; font-weight:bold; padding:6px;">S.L</th>
+            <th style="border:1px solid #999; background-color: yellow; font-weight:bold; padding:6px;">Modification</th>
+            <th style="border:1px solid #999; background-color: yellow; font-weight:bold; padding:6px;">Extras/Addons</th>
+            <th style="border:1px solid #999; background-color: yellow; font-weight:bold; padding:6px;">Request Type</th>
+            <th style="border:1px solid #999; background-color: yellow; font-weight:bold; padding:6px;">Comments</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="border:1px solid #999; padding:6px;">${accountNumber}</td>
+            <td style="border:1px solid #999; padding:6px;">${accountName}</td>
+            <td style="border:1px solid #999; padding:6px;">${msisdns}</td>
+            <td style="border:1px solid #999; padding:6px;">${simSerial}</td>
+            <td style="border:1px solid #999; padding:6px;">${slVal}</td>
+            <td style="border:1px solid #999; padding:6px;">${planChange}</td>
+            <td style="border:1px solid #999; padding:6px;">${addonVal}</td>
+            <td style="border:1px solid #999; padding:6px;">${modSelection}</td>
+            <td style="border:1px solid #999; padding:6px;">${comments}</td>
+          </tr>
+        </tbody>
+      </table>
+    `;
 
     const bodyHtml = `
       <p>Hi team,</p>
