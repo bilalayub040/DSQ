@@ -129,45 +129,46 @@ Office.onReady(() => {
     `;
   });
 
-  // Email button: opens new email with HTML table and attaches current email
-  document.getElementById('emailBtn').addEventListener('click', () => {
+ document.getElementById('emailBtn').addEventListener('click', () => {
     const comments = document.getElementById('comments').value || '---';
     const tableHtml = document.getElementById('outputTable').outerHTML;
     const bodyHtml = `
-      <p>Hi team,</p>
-      <p>Please action the below:</p>
-      <p>${comments}</p>
-      ${tableHtml}
+        <p>Hi team,</p>
+        <p>Please action the below:</p>
+        <p>${comments}</p>
+        ${tableHtml}
     `;
 
-    // Attach current email
+    // Get current email's itemId to attach
     Office.context.mailbox.item.getItemIdAsync({}, function(result) {
-      if (result.status === Office.AsyncResultStatus.Succeeded) {
-        const itemId = result.value;
+        if (result.status === Office.AsyncResultStatus.Succeeded) {
+            const itemId = result.value;
 
-        Office.context.mailbox.displayNewMessageForm({
-          toRecipients: ['qv@covalenseglobal.com'],
-          subject: 'DSQ Request',
-          htmlBody: bodyHtml,
-          attachments: [{
-            type: Office.MailboxEnums.AttachmentType.Item,
-            itemId: itemId,
-            name: 'CurrentEmail.msg'
-          }]
-        });
-      } else {
-        console.error('Could not get current email id:', result.error);
-        // fallback without attachment
-        Office.context.mailbox.displayNewMessageForm({
-          toRecipients: ['qv@covalenseglobal.com'],
-          subject: 'DSQ Request',
-          htmlBody: bodyHtml
-        });
-      }
+            Office.context.mailbox.displayNewMessageForm({
+                toRecipients: ['qv@covalenseglobal.com'],
+                subject: 'DSQ Request',
+                htmlBody: bodyHtml,
+                attachments: [{
+                    type: Office.MailboxEnums.AttachmentType.Item,
+                    itemId: itemId,
+                    name: 'CurrentEmail.msg'
+                }]
+            });
+        } else {
+            console.error('Could not get current email id:', result.error);
+
+            // fallback: just open new email without attachment
+            Office.context.mailbox.displayNewMessageForm({
+                toRecipients: ['qv@covalenseglobal.com'],
+                subject: 'DSQ Request',
+                htmlBody: bodyHtml
+            });
+        }
     });
-  });
+});
 });
 </script>
 
 </body>
 </html>
+
