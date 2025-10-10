@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>DSQ Outlook Taskpane new</title>
+<title>DSQ Outlook Taskpane</title>
 <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 <style>
   body { font-family: Arial; margin: 10px; font-size: 13px; }
@@ -42,7 +42,8 @@
 <textarea id="comments" rows="3" placeholder="Enter comments"></textarea>
 
 <button id="generateBtn">Generate Table</button>
-<button id="emailBtn">Email</button>
+<button id="emailBtn">Email (New Email)</button>
+<button id="attachEmailBtn">Attach Current Email</button>
 
 <table id="outputTable">
   <thead>
@@ -96,7 +97,7 @@ Office.onReady(() => {
     }
   });
 
-  document.getElementById('generateBtn').addEventListener('click', () => {
+  const getFormData = () => {
     const accountNumber = document.getElementById('accountNumber').value || '---';
     const accountName = document.getElementById('accountName').value || '---';
     const msisdns = document.getElementById('msisdns').value || '---';
@@ -110,38 +111,29 @@ Office.onReady(() => {
     const addonVal = modSelection === 'Addon' ? extraVal : '---';
     const tonVal = modSelection === 'TON' ? extraVal : '---';
 
+    return { accountNumber, accountName, msisdns, comments, modSelection, simSerial, slVal, planChange, addonVal, tonVal };
+  };
+
+  document.getElementById('generateBtn').addEventListener('click', () => {
+    const data = getFormData();
     const tbody = document.querySelector('#outputTable tbody');
     tbody.innerHTML = `
       <tr>
-        <td>${accountNumber}</td>
-        <td>${accountName}</td>
-        <td>${msisdns}</td>
-        <td>${simSerial}</td>
-        <td>${slVal}</td>
-        <td>${planChange}</td>
-        <td>${addonVal}</td>
-        <td>${modSelection}</td>
-        <td>${comments}</td>
+        <td>${data.accountNumber}</td>
+        <td>${data.accountName}</td>
+        <td>${data.msisdns}</td>
+        <td>${data.simSerial}</td>
+        <td>${data.slVal}</td>
+        <td>${data.planChange}</td>
+        <td>${data.addonVal}</td>
+        <td>${data.modSelection}</td>
+        <td>${data.comments}</td>
       </tr>
     `;
   });
 
-  // Email button with current email attachment
-  document.getElementById('emailBtn').addEventListener('click', () => {
-    const accountNumber = document.getElementById('accountNumber').value || '---';
-    const accountName = document.getElementById('accountName').value || '---';
-    const msisdns = document.getElementById('msisdns').value || '---';
-    const comments = document.getElementById('comments').value || '---';
-    const modSelection = modType.value || '---';
-    const extraVal = extraInput ? extraInput.value || '---' : '---';
-
-    const simSerial = modSelection === 'Sim swap' ? extraVal : '---';
-    const slVal = modSelection === 'S.L' ? extraVal : '---';
-    const planChange = modSelection === 'Plan change' ? extraVal : '---';
-    const addonVal = modSelection === 'Addon' ? extraVal : '---';
-    const tonVal = modSelection === 'TON' ? extraVal : '---';
-
-    const tableHtml = `
+  const generateTableHtml = (data) => {
+    return `
       <table style="width:100%; border-collapse: collapse; border:1px solid #999;">
         <thead>
           <tr>
@@ -158,56 +150,54 @@ Office.onReady(() => {
         </thead>
         <tbody>
           <tr>
-            <td style="border:1px solid #999; padding:6px;">${accountNumber}</td>
-            <td style="border:1px solid #999; padding:6px;">${accountName}</td>
-            <td style="border:1px solid #999; padding:6px;">${msisdns}</td>
-            <td style="border:1px solid #999; padding:6px;">${simSerial}</td>
-            <td style="border:1px solid #999; padding:6px;">${slVal}</td>
-            <td style="border:1px solid #999; padding:6px;">${planChange}</td>
-            <td style="border:1px solid #999; padding:6px;">${addonVal}</td>
-            <td style="border:1px solid #999; padding:6px;">${modSelection}</td>
-            <td style="border:1px solid #999; padding:6px;">${comments}</td>
+            <td style="border:1px solid #999; padding:6px;">${data.accountNumber}</td>
+            <td style="border:1px solid #999; padding:6px;">${data.accountName}</td>
+            <td style="border:1px solid #999; padding:6px;">${data.msisdns}</td>
+            <td style="border:1px solid #999; padding:6px;">${data.simSerial}</td>
+            <td style="border:1px solid #999; padding:6px;">${data.slVal}</td>
+            <td style="border:1px solid #999; padding:6px;">${data.planChange}</td>
+            <td style="border:1px solid #999; padding:6px;">${data.addonVal}</td>
+            <td style="border:1px solid #999; padding:6px;">${data.modSelection}</td>
+            <td style="border:1px solid #999; padding:6px;">${data.comments}</td>
           </tr>
         </tbody>
       </table>
     `;
+  };
 
-    const bodyHtml = `
-      <p>Hi team,</p>
-      <p>Please action the below:</p>
-      <p>${comments}</p>
-      ${tableHtml}
-    `;
+  // New email with table
+  document.getElementById('emailBtn').addEventListener('click', () => {
+    const data = getFormData();
+    const bodyHtml = `<p>Hi team,</p><p>Please action the below:</p>${data.comments}${generateTableHtml(data)}`;
 
+    Office.context.mailbox.displayNewMessageForm({
+      toRecipients: ['qv@covalenseglobal.com'],
+      subject: 'DSQ Request',
+      htmlBody: bodyHtml
+    });
+  });
+
+  // Forward current email (attach current email)
+  document.getElementById('attachEmailBtn').addEventListener('click', () => {
     const item = Office.context.mailbox.item;
     if (item && item.itemType === Office.MailboxEnums.ItemType.Message) {
-        Office.context.mailbox.item.getItemIdAsync((result) => {
-            let attachments = [];
-            if (result.status === Office.AsyncResultStatus.Succeeded) {
-                attachments.push({
-                    type: "item",
-                    itemId: result.value
-                });
-            } else {
-                alert("Failed to attach current email. Continuing without attachment.");
-            }
-
-            Office.context.mailbox.displayNewMessageForm({
-                toRecipients: ['qv@covalenseglobal.com'],
-                subject: 'DSQ Request',
-                htmlBody: bodyHtml,
-                attachments: attachments
-            });
-        });
+      item.forwardAsync(
+        {
+          toRecipients: ['qv@covalenseglobal.com'],
+          subject: 'DSQ Request (Forwarded)',
+          htmlBody: '<p>See attached email with request table.</p>'
+        },
+        (result) => {
+          if (result.status !== Office.AsyncResultStatus.Succeeded) {
+            alert('Failed to attach current email.');
+          }
+        }
+      );
     } else {
-        // Not in read mode or item not available
-        Office.context.mailbox.displayNewMessageForm({
-            toRecipients: ['qv@covalenseglobal.com'],
-            subject: 'DSQ Request',
-            htmlBody: bodyHtml
-        });
+      alert('No current email available to attach.');
     }
   });
+
 });
 </script>
 
