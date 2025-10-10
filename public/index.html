@@ -874,20 +874,30 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
   }
 
   // --- Helper to inline table styles for borders/colors ---
-  function inlineTableStyles(html) {
-    return html
-      .replace(/<table([^>]*)>/gi, (match, attrs) => {
-        if (!/border=/.test(attrs) && !/style=/.test(attrs)) {
-          return `<table${attrs} border="1" style="border-collapse:collapse;">`;
-        }
-        if (/style=/.test(attrs)) {
-          return `<table${attrs.replace(/style="([^"]*)"/, (m, s) => `style="${s};border:1px solid #000;border-collapse:collapse;"`)}>`;
-        }
-        return match;
-      })
-      .replace(/<th([^>]*)>/gi, (match, attrs) => `<th${attrs} style="border:1px solid #000;">`)
-      .replace(/<td([^>]*)>/gi, (match, attrs) => `<td${attrs} style="border:1px solid #000;">`);
-  }
+	function inlineTableStylesWithColors(html) {
+	  return html
+		.replace(/<table([^>]*)>/gi, (match, attrs) => {
+		  // Preserve existing style and add border-collapse & border
+		  if (/style=/.test(attrs)) {
+			return `<table${attrs.replace(/style="([^"]*)"/, (m, s) => `style="${s[1]};border:1px solid #000;border-collapse:collapse;"`)}>`;
+		  }
+		  return `<table${attrs} border="1" style="border-collapse:collapse;border:1px solid #000;">`;
+		})
+		.replace(/<th([^>]*)>/gi, (match, attrs) => {
+		  // Preserve any existing background or bold
+		  if (/style=/.test(attrs)) {
+			return `<th${attrs.replace(/style="([^"]*)"/, (m, s) => `style="${s[1]};border:1px solid #000;"`)}>`;
+		  }
+		  return `<th${attrs} style="border:1px solid #000;">`;
+		})
+		.replace(/<td([^>]*)>/gi, (match, attrs) => {
+		  if (/style=/.test(attrs)) {
+			return `<td${attrs.replace(/style="([^"]*)"/, (m, s) => `style="${s[1]};border:1px solid #000;"`)}>`;
+		  }
+		  return `<td${attrs} style="border:1px solid #000;">`;
+		});
+	}
+
 
   // --- Prepare main content excluding Discount and Movement tables ---
   let mainContent = htmlContent;
