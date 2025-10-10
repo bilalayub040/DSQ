@@ -875,16 +875,27 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
 
   // --- Helper to inline table styles for borders/colors ---
   function inlineTableStyles(html) {
-	return html
+	  return html
 		.replace(/<table([^>]*)>/gi, (match, attrs) => {
-		  // Preserve existing style and add border-collapse & border
 		  if (/style=/.test(attrs)) {
 			return `<table${attrs.replace(/style="([^"]*)"/, (m, s) => `style="${s[1]};border:1px solid #000;border-collapse:collapse;"`)}>`;
 		  }
 		  return `<table${attrs} border="1" style="border-collapse:collapse;border:1px solid #000;">`;
 		})
+		// Apply yellow background to first row <tr> of each table
+		.replace(/<tr>/gi, (match, offset, string) => {
+		  const tableStart = string.lastIndexOf('<table', offset);
+		  const firstTrEnd = string.indexOf('</tr>', tableStart);
+		  if (offset === tableStart + string.slice(tableStart, offset).length) {
+			return '<tr style="background-color: yellow;">';
+		  }
+		  // To ensure only the first row gets yellow, check if it's the first <tr> after <table>
+		  if (offset < firstTrEnd) {
+			return '<tr style="background-color: yellow;">';
+		  }
+		  return match;
+		})
 		.replace(/<th([^>]*)>/gi, (match, attrs) => {
-		  // Preserve any existing background or bold
 		  if (/style=/.test(attrs)) {
 			return `<th${attrs.replace(/style="([^"]*)"/, (m, s) => `style="${s[1]};border:1px solid #000;"`)}>`;
 		  }
