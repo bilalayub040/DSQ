@@ -5,34 +5,12 @@
 <title>DSQ Outlook Taskpane</title>
 <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 <style>
-  body {
-    font-family: Arial, sans-serif;
-    margin: 10px;
-    font-size: 13px;
-  }
-  label {
-    display: block;
-    margin-top: 8px;
-  }
-  input, select, textarea, button {
-    margin-top: 4px;
-    padding: 4px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 12px;
-  }
-  table, th, td {
-    border: 1px solid #999;
-  }
-  th, td {
-    padding: 6px;
-    text-align: left;
-    font-size: 12px;
-  }
+  body { font-family: Arial; margin: 10px; font-size: 13px; }
+  label { display:block; margin-top:8px; }
+  input, select, textarea, button { margin-top:4px; padding:4px; width:100%; box-sizing:border-box; }
+  table { width:100%; border-collapse: collapse; margin-top:12px; }
+  table, th, td { border:1px solid #999; }
+  th, td { padding:6px; text-align:left; font-size:12px; }
 </style>
 </head>
 <body>
@@ -106,7 +84,6 @@ Office.onReady(() => {
   modType.addEventListener('change', () => {
     dynamicContainer.innerHTML = '';
     extraInput = null;
-
     const val = modType.value;
     if(val) {
       const label = document.createElement('label');
@@ -152,7 +129,7 @@ Office.onReady(() => {
     `;
   });
 
-  // Email button using Office.js for proper HTML table
+  // Email button using correct Office.js API
   document.getElementById('emailBtn').addEventListener('click', () => {
     const comments = document.getElementById('comments').value || '---';
     const tableHtml = document.getElementById('outputTable').outerHTML;
@@ -164,7 +141,7 @@ Office.onReady(() => {
       ${tableHtml}
     `;
 
-    Office.context.mailbox.item.displayNewMessageForm({
+    Office.context.mailbox.displayNewMessageForm({
       toRecipients: ['qv@covalenseglobal.com'],
       subject: 'DSQ Request',
       htmlBody: bodyHtml
