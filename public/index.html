@@ -11,7 +11,6 @@
   table { width:100%; border-collapse: collapse; margin-top:12px; }
   table, th, td { border:1px solid #999; }
   th, td { padding:6px; text-align:left; font-size:12px; }
-  thead tr { background-color: yellow; font-weight: bold; }
 </style>
 </head>
 <body>
@@ -48,15 +47,15 @@
 <table id="outputTable">
   <thead>
     <tr>
-      <th>Account number/Sample #</th>
-      <th>Account name</th>
-      <th>Msisdn(s)</th>
-      <th>Sim serial(s)</th>
-      <th>S.L</th>
-      <th>Modification</th>
-      <th>Extras/Addons</th>
-      <th>Request Type</th>
-      <th>Comments</th>
+      <th style="background-color: yellow; font-weight:bold;">Account number/Sample #</th>
+      <th style="background-color: yellow; font-weight:bold;">Account name</th>
+      <th style="background-color: yellow; font-weight:bold;">Msisdn(s)</th>
+      <th style="background-color: yellow; font-weight:bold;">Sim serial(s)</th>
+      <th style="background-color: yellow; font-weight:bold;">S.L</th>
+      <th style="background-color: yellow; font-weight:bold;">Modification</th>
+      <th style="background-color: yellow; font-weight:bold;">Extras/Addons</th>
+      <th style="background-color: yellow; font-weight:bold;">Request Type</th>
+      <th style="background-color: yellow; font-weight:bold;">Comments</th>
     </tr>
   </thead>
   <tbody>
@@ -78,10 +77,8 @@
 Office.onReady(() => {
   const modType = document.getElementById('modType');
   const dynamicContainer = document.getElementById('dynamicInputContainer');
-
   let extraInput = null;
 
-  // Show dynamic input based on dropdown selection
   modType.addEventListener('change', () => {
     dynamicContainer.innerHTML = '';
     extraInput = null;
@@ -99,7 +96,6 @@ Office.onReady(() => {
     }
   });
 
-  // Generate table values for taskpane display
   document.getElementById('generateBtn').addEventListener('click', () => {
     const accountNumber = document.getElementById('accountNumber').value || '---';
     const accountName = document.getElementById('accountName').value || '---';
@@ -130,7 +126,7 @@ Office.onReady(() => {
     `;
   });
 
-  // Email button: opens new email with inline-styled table
+  // Email button with current email attachment
   document.getElementById('emailBtn').addEventListener('click', () => {
     const accountNumber = document.getElementById('accountNumber').value || '---';
     const accountName = document.getElementById('accountName').value || '---';
@@ -183,11 +179,34 @@ Office.onReady(() => {
       ${tableHtml}
     `;
 
-    Office.context.mailbox.displayNewMessageForm({
-      toRecipients: ['qv@covalenseglobal.com'],
-      subject: 'DSQ Request',
-      htmlBody: bodyHtml
-    });
+    const item = Office.context.mailbox.item;
+    if (item && item.itemType === Office.MailboxEnums.ItemType.Message) {
+        Office.context.mailbox.item.getItemIdAsync((result) => {
+            let attachments = [];
+            if (result.status === Office.AsyncResultStatus.Succeeded) {
+                attachments.push({
+                    type: "item",
+                    itemId: result.value
+                });
+            } else {
+                alert("Failed to attach current email. Continuing without attachment.");
+            }
+
+            Office.context.mailbox.displayNewMessageForm({
+                toRecipients: ['qv@covalenseglobal.com'],
+                subject: 'DSQ Request',
+                htmlBody: bodyHtml,
+                attachments: attachments
+            });
+        });
+    } else {
+        // Not in read mode or item not available
+        Office.context.mailbox.displayNewMessageForm({
+            toRecipients: ['qv@covalenseglobal.com'],
+            subject: 'DSQ Request',
+            htmlBody: bodyHtml
+        });
+    }
   });
 });
 </script>
