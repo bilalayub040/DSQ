@@ -83,7 +83,15 @@ label.inline textarea {
 }
   textarea { resize: vertical; min-height: 30px; }
   .hidden { display: none !important; }
-
+.email-select {
+  width: 100%;
+  min-height: 80px;
+  font-size: 11px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 3px;
+  background: #fff;
+}
   .plan {
     display: flex;
     flex-wrap: nowrap; 
@@ -296,8 +304,8 @@ label.inline textarea {
   <div class="row">
     <div class="col">
       <h2>Section D – Email</h2>
-      <label class="inline">To <input type="text" id="toEmail"></label>
-      <label class="inline">CC <input type="text" id="ccEmail"></label>
+      <label class="inline">To<select id="toEmail" class="email-select" multiple></select></label>
+	  <label class="inline">CC<select id="ccEmail" class="email-select" multiple></select></label>
       <label class="inline">Others <input type="text" id="othersEmail"></label>
       <label class="inline">Comments <textarea id="commentsBox"></textarea></label>
     </div>
@@ -780,8 +788,11 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
   });
 
   // --- SECTION D ---
+  // --- SECTION D ---
   const toEmail = document.getElementById("toEmail");
-  if (!toEmail.value.trim()) fieldsToCheck.push(toEmail);
+  const selectedTo = Array.from(toEmail.selectedOptions).map(o => o.value);
+  if (selectedTo.length === 0) fieldsToCheck.push(toEmail);
+
 
   // --- SECTION E ---
   // Prefer the pickAttachmentsBtn if present, otherwise fallback to attachmentsInput
@@ -845,10 +856,12 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
     return;
   }
 
-  // --- Email Fields ---
-  const ccEmail = document.getElementById("ccEmail").value.trim();
-  const othersEmail = document.getElementById("othersEmail").value.trim();
-  const toCcCombined = [toEmail.value.trim()].concat(ccEmail, othersEmail).filter(x=>x).join(", ");
+   // --- Email Fields ---
+   const toSelected = Array.from(document.getElementById("toEmail").selectedOptions).map(o => o.value);
+   const ccSelected = Array.from(document.getElementById("ccEmail").selectedOptions).map(o => o.value);
+   const othersEmail = document.getElementById("othersEmail").value.trim();
+   const toCcCombined = [...toSelected, ...ccSelected, othersEmail].filter(x => x).join(", ");
+
 
   // --- Attachments List ---
   const attachmentsText = (attachmentFiles || []).map(f => f.path || f.name).join("\r\n");
@@ -1005,6 +1018,33 @@ Hi Team<br><br>Please action the below Account movement request:<br>${movementSt
 
   console.log("✅ Submission flow completed. Files created at:", newFolderPath);
 });
+// === Load email dropdowns dynamically ===
+async function loadEmailDropdowns() {
+  const toSelect = document.getElementById("toEmail");
+  const ccSelect = document.getElementById("ccEmail");
+
+  async function populateDropdown(url, selectEl) {
+    try {
+      const response = await fetch(url);
+      const text = await response.text();
+      const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+      selectEl.innerHTML = "";
+      lines.forEach(email => {
+        const opt = document.createElement("option");
+        opt.value = email.trim();
+        opt.textContent = email.trim();
+        selectEl.appendChild(opt);
+      });
+    } catch (err) {
+      console.error("Error loading emails:", url, err);
+    }
+  }
+
+  await populateDropdown("https://dsq-beta.vercel.app/BO_emails.txt", toSelect);
+  await populateDropdown("https://dsq-beta.vercel.app/CC_emails.txt", ccSelect);
+}
+
+document.addEventListener("DOMContentLoaded", loadEmailDropdowns);
 
 </script>
 </body>
