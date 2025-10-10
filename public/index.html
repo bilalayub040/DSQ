@@ -9,8 +9,9 @@
   label { display:block; margin-top:8px; }
   input, select, textarea, button { margin-top:4px; padding:4px; width:100%; box-sizing:border-box; }
   table { width:100%; border-collapse: collapse; margin-top:12px; }
-  table, th, td { border:1px solid #999; }
+  table, th, td { border:1px solid black; }
   th, td { padding:6px; text-align:left; font-size:12px; }
+  thead tr { background-color: yellow; font-weight:bold; }
 </style>
 </head>
 <body>
@@ -77,7 +78,6 @@
 Office.onReady(() => {
   const modType = document.getElementById('modType');
   const dynamicContainer = document.getElementById('dynamicInputContainer');
-
   let extraInput = null;
 
   // Show dynamic input based on dropdown selection
@@ -129,11 +129,10 @@ Office.onReady(() => {
     `;
   });
 
-  // Email button using correct Office.js API
+  // Email button: opens new email with HTML table and attaches current email
   document.getElementById('emailBtn').addEventListener('click', () => {
     const comments = document.getElementById('comments').value || '---';
     const tableHtml = document.getElementById('outputTable').outerHTML;
-
     const bodyHtml = `
       <p>Hi team,</p>
       <p>Please action the below:</p>
@@ -141,10 +140,30 @@ Office.onReady(() => {
       ${tableHtml}
     `;
 
-    Office.context.mailbox.displayNewMessageForm({
-      toRecipients: ['qv@covalenseglobal.com'],
-      subject: 'DSQ Request',
-      htmlBody: bodyHtml
+    // Attach current email
+    Office.context.mailbox.item.getItemIdAsync({}, function(result) {
+      if (result.status === Office.AsyncResultStatus.Succeeded) {
+        const itemId = result.value;
+
+        Office.context.mailbox.displayNewMessageForm({
+          toRecipients: ['qv@covalenseglobal.com'],
+          subject: 'DSQ Request',
+          htmlBody: bodyHtml,
+          attachments: [{
+            type: Office.MailboxEnums.AttachmentType.Item,
+            itemId: itemId,
+            name: 'CurrentEmail.msg'
+          }]
+        });
+      } else {
+        console.error('Could not get current email id:', result.error);
+        // fallback without attachment
+        Office.context.mailbox.displayNewMessageForm({
+          toRecipients: ['qv@covalenseglobal.com'],
+          subject: 'DSQ Request',
+          htmlBody: bodyHtml
+        });
+      }
     });
   });
 });
