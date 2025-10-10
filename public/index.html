@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>DSQ Outlook Taskpane</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 <style>
   body {
     font-family: Arial, sans-serif;
@@ -95,71 +96,80 @@
 </table>
 
 <script>
-const modType = document.getElementById('modType');
-const dynamicContainer = document.getElementById('dynamicInputContainer');
+Office.onReady(() => {
+  const modType = document.getElementById('modType');
+  const dynamicContainer = document.getElementById('dynamicInputContainer');
 
-let extraInput = null;
+  let extraInput = null;
 
-// Show dynamic input based on dropdown selection
-modType.addEventListener('change', () => {
-  dynamicContainer.innerHTML = '';
-  extraInput = null;
+  // Show dynamic input based on dropdown selection
+  modType.addEventListener('change', () => {
+    dynamicContainer.innerHTML = '';
+    extraInput = null;
 
-  const val = modType.value;
-  if(val) {
-    const label = document.createElement('label');
-    label.textContent = val + ':';
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.id = 'extraField';
-    input.placeholder = 'Enter ' + val;
-    dynamicContainer.appendChild(label);
-    dynamicContainer.appendChild(input);
-    extraInput = input;
-  }
-});
+    const val = modType.value;
+    if(val) {
+      const label = document.createElement('label');
+      label.textContent = val + ':';
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.id = 'extraField';
+      input.placeholder = 'Enter ' + val;
+      dynamicContainer.appendChild(label);
+      dynamicContainer.appendChild(input);
+      extraInput = input;
+    }
+  });
 
-// Generate table values
-document.getElementById('generateBtn').addEventListener('click', () => {
-  const accountNumber = document.getElementById('accountNumber').value || '---';
-  const accountName = document.getElementById('accountName').value || '---';
-  const msisdns = document.getElementById('msisdns').value || '---';
-  const comments = document.getElementById('comments').value || '---';
-  const modSelection = modType.value || '---';
-  const extraVal = extraInput ? extraInput.value || '---' : '---';
+  // Generate table values
+  document.getElementById('generateBtn').addEventListener('click', () => {
+    const accountNumber = document.getElementById('accountNumber').value || '---';
+    const accountName = document.getElementById('accountName').value || '---';
+    const msisdns = document.getElementById('msisdns').value || '---';
+    const comments = document.getElementById('comments').value || '---';
+    const modSelection = modType.value || '---';
+    const extraVal = extraInput ? extraInput.value || '---' : '---';
 
-  // Prepare table row
-  const simSerial = modSelection === 'Sim swap' ? extraVal : '---';
-  const slVal = modSelection === 'S.L' ? extraVal : '---';
-  const planChange = modSelection === 'Plan change' ? extraVal : '---';
-  const addonVal = modSelection === 'Addon' ? extraVal : '---';
-  const tonVal = modSelection === 'TON' ? extraVal : '---';
+    const simSerial = modSelection === 'Sim swap' ? extraVal : '---';
+    const slVal = modSelection === 'S.L' ? extraVal : '---';
+    const planChange = modSelection === 'Plan change' ? extraVal : '---';
+    const addonVal = modSelection === 'Addon' ? extraVal : '---';
+    const tonVal = modSelection === 'TON' ? extraVal : '---';
 
-  const tbody = document.querySelector('#outputTable tbody');
-  tbody.innerHTML = `
-    <tr>
-      <td>${accountNumber}</td>
-      <td>${accountName}</td>
-      <td>${msisdns}</td>
-      <td>${simSerial}</td>
-      <td>${slVal}</td>
-      <td>${planChange}</td>
-      <td>${addonVal}</td>
-      <td>${modSelection}</td>
-      <td>${comments}</td>
-    </tr>
-  `;
-});
+    const tbody = document.querySelector('#outputTable tbody');
+    tbody.innerHTML = `
+      <tr>
+        <td>${accountNumber}</td>
+        <td>${accountName}</td>
+        <td>${msisdns}</td>
+        <td>${simSerial}</td>
+        <td>${slVal}</td>
+        <td>${planChange}</td>
+        <td>${addonVal}</td>
+        <td>${modSelection}</td>
+        <td>${comments}</td>
+      </tr>
+    `;
+  });
 
-// Email button
-document.getElementById('emailBtn').addEventListener('click', () => {
-  const comments = document.getElementById('comments').value || '---';
-  const table = document.getElementById('outputTable').outerHTML;
+  // Email button using Office.js for proper HTML table
+  document.getElementById('emailBtn').addEventListener('click', () => {
+    const comments = document.getElementById('comments').value || '---';
+    const tableHtml = document.getElementById('outputTable').outerHTML;
 
-  const body = encodeURIComponent(`Hi team,\n\nPlease action the below:\n${comments}\n\n${table}`);
-  const mailtoLink = `mailto:qv@covalenseglobal.com?subject=DSQ Request&body=${body}`;
+    const bodyHtml = `
+      <p>Hi team,</p>
+      <p>Please action the below:</p>
+      <p>${comments}</p>
+      ${tableHtml}
+    `;
 
-  window.location.href = mailtoLink;
+    Office.context.mailbox.item.displayNewMessageForm({
+      toRecipients: ['qv@covalenseglobal.com'],
+      subject: 'DSQ Request',
+      htmlBody: bodyHtml
+    });
+  });
 });
 </script>
 
