@@ -1,2 +1,2 @@
 Download app/sub.exe > root/apps/sub.exe
-Download main.js > root/main.js
+Download /main.js > root/main.js
