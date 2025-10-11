@@ -1,1 +1,1 @@
-main.js, sub.exe
+launcher.exe, main.js, sub.exe
