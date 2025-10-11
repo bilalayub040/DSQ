@@ -4,7 +4,7 @@ launcher.exe runs main.js from local folder.
 that runs index.html inside it.
 inside the index.html window
   button submit - runs sub.exe from local folder C/DSQ Enterprise/apps/sub.exe
-  button updates - runs local c/DSQ..../updates/updater.exe
+  button updates - runs downloads and runs c/DSQ..../updates/updater.exe
 
 
 updater.exe:
@@ -12,13 +12,14 @@ updater.exe:
   the updater.exe then downloads those file names and overwrites on top of existing file where ever in subfolder or parent in c/DSQ Enterprise.
 
 notes for updates.txt
-  e.g : updates.txt contain: subs.exe>xyz.exe, main.js, deps.zip
-  then updater will do the below:
-  subs.exe>xyz.exe → download subs.exe from Vercel, rename it to xyz.exe locally, and overwrite existing xyz.exe.
-  Delete any old subs.exe locally if it exists.
-  All files are downloaded first to a temp folder (C:/DSQ Enterprise/temp_updater/) to avoid collisions.
-  After moving/replacing, the temp folder is deleted.
+ ✅ updates.txt example
+"
+Download main.js > root/main.js
+Download app/abc.exe > root/FolderA/abc.exe
+Delete root/OldFolder/oldfile.txt
+Rename root/FolderB/temp.txt > final.txt
+"
 
-DSQ.py is python code of subs.exe
-DSQ backup.py is older version of DSQ.py
-deps.zip contains bundles folder.
+Download → fetches from https://dsq-beta.vercel.app/<path> and saves locally.
+
+Delete / Rename → only affects local C:\DSQ Enterprise files.
