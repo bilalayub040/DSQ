@@ -4,27 +4,62 @@ const fs = require('fs');
 const https = require('https');
 const { exec } = require('child_process');
 
-const mainUrl = 'https://dsq-beta.vercel.app/index.html';
+const serverBase = 'https://dsq-beta.vercel.app/';
+let mainWindow;
 
 async function createWindow() {
     const ses = session.defaultSession;
     await ses.clearCache();
     await ses.clearStorageData();
 
-    const win = new BrowserWindow({
+    mainWindow = new BrowserWindow({
         width: 850,
         height: 900,
         webPreferences: {
-            nodeIntegration: true,
+            nodeIntegration: true,       // allows ipcRenderer in loaded pages
             contextIsolation: false,
             webSecurity: false
         }
     });
 
-    await win.loadURL(mainUrl);
-win.setMenu(null);//removes the toolbarr
+    mainWindow.setMenu(null);
+    await mainWindow.loadURL(serverBase + 'index.html'); // initial menu page
 
+    // --- Inject Home Button on every page load ---
+    mainWindow.webContents.on('did-finish-load', () => {
+        mainWindow.webContents.executeJavaScript(`
+            if (!document.getElementById('homeBtn')) {
+                const btn = document.createElement('button');
+                btn.id = 'homeBtn';
+                btn.textContent = 'Home';
+                btn.style.position = 'fixed';
+                btn.style.top = '10px';
+                btn.style.right = '10px';
+                btn.style.padding = '6px 12px';
+                btn.style.zIndex = 9999;
+                btn.style.background = '#007bff';
+                btn.style.color = 'white';
+                btn.style.border = 'none';
+                btn.style.borderRadius = '4px';
+                btn.style.cursor = 'pointer';
+                btn.style.fontSize = '14px';
+
+                btn.addEventListener('click', () => {
+                    window.location.href = '${serverBase}index.html';
+                });
+
+                document.body.appendChild(btn);
+            }
+        `);
+    });
 }
+
+// ---------- Load different page on button click ----------
+ipcMain.on('load-page', async (event, page) => {
+    if (!mainWindow) return;
+    console.log('[main] loading page:', page);
+    await mainWindow.loadURL(serverBase + encodeURIComponent(page));
+});
 
 // ---------- File Picker ----------
 ipcMain.handle('pick-files', async () => {
@@ -68,10 +103,3 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
-
-
-
-
-
-
-
