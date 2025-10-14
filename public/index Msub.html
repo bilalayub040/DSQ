@@ -223,7 +223,7 @@ label.inline textarea {
 </head>
 <body>
 <button id="updateBtn">Update</button>
-<button id="mainMenuBtn">Main</button>
+<button id="updateBtn">Main Screen</button>
 <div class="container">
 
   <!-- Section A & B side by side -->
@@ -1066,25 +1066,6 @@ async function loadEmailDropdowns() {
 
 document.addEventListener("DOMContentLoaded", loadEmailDropdowns);
 
-	//home button
-  const { ipcRenderer } = require('electron');
-  document.getElementById('mainMenuBtn').addEventListener('click', () => {
-      // Load the main menu page (index.html) from the server
-      ipcRenderer.send('load-page', 'index.html');
-  });
-	//home button
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
