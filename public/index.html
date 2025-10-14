@@ -13,79 +13,74 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    background: #f4f5f7;
-    color: #333;
+    background: #ffffff;
+    color: #1f2937;
   }
 
   /* --- Container --- */
   .container {
     background: #ffffff;
-    padding: 40px 50px;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    padding: 30px 40px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     text-align: center;
-    min-width: 300px;
+    min-width: 280px;
   }
 
   h1 {
-    font-size: 22px;
-    margin-bottom: 35px;
+    font-size: 20px;
+    margin-bottom: 25px;
     font-weight: 600;
-    color: #1f2937;
+    color: #0f172a; /* dark navy */
   }
 
   /* --- Buttons Container --- */
   .button-container {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 12px;
   }
 
   /* --- Buttons Styling --- */
   button {
-    padding: 12px 25px;
-    font-size: 15px;
-    border: 1px solid transparent;
+    padding: 10px 20px;
+    font-size: 14px;
+    border: none;
     border-radius: 6px;
     cursor: pointer;
     font-weight: 500;
+    background-color: #1e40af; /* dark blue */
+    color: white;
     transition: all 0.2s ease;
-    box-shadow: none;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
   }
 
   button:hover {
+    background-color: #1e3a8a; /* slightly darker */
     transform: translateY(-1px);
-    opacity: 0.9;
   }
 
-  #mobilityBtn {
-    background-color: #2563eb; /* deep blue */
-    color: white;
-  }
-
+  /* --- Specific Buttons (optional subtle differentiation) --- */
   #fixedBtn {
-    background-color: #0d9488; /* teal */
-    color: white;
+    background-color: #1e3a8a;
   }
 
   #othersBtn {
-    background-color: #f59e0b; /* amber */
-    color: white;
+    background-color: #1e40af;
   }
 
   #updateBtn {
-    background-color: #16a34a; /* green */
-    color: white;
+    background-color: #2563eb;
   }
 
   /* --- Responsive --- */
   @media (max-width: 400px) {
     .container {
-      padding: 30px 20px;
+      padding: 20px 25px;
     }
     button {
-      font-size: 14px;
-      padding: 10px 20px;
+      font-size: 13px;
+      padding: 8px 16px;
     }
   }
 </style>
