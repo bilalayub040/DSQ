@@ -366,12 +366,13 @@ btn.onclick=()=>{
 };
 //update button logic
 	//home button
+	<script>
   const { ipcRenderer } = require('electron');
-
   document.getElementById('mainMenuBtn').addEventListener('click', () => {
       // Load the main menu page (index.html) from the server
       ipcRenderer.send('load-page', 'index.html');
   });
+	</script>
 	//home button
 // Section A logic
 const accountToggle = document.getElementById("accountToggle");
@@ -1077,6 +1078,7 @@ document.addEventListener("DOMContentLoaded", loadEmailDropdowns);
 </script>
 </body>
 </html>
+
 
 
 
