@@ -552,13 +552,25 @@ function renderPreview() {
   }
 
   // --- Account summary ---
-  const accNum = document.querySelector('[data-field="3"] input').value || "";
-  const accName = document.querySelector('[data-field="2"] input').value || "";
-  const agentID = document.querySelector('[data-field="8"] input').value || document.querySelector('[data-field="9"] input').value || "";
-  html += `<table style="width:auto; margin-bottom:10px;">
-      <tr><th>Account number</th><th>Account name</th><th>Request Type</th><th>Agent ID</th></tr>
-      <tr><td>${accNum}</td><td>${accName}</td><td>${agentID}</td></tr>
-  </table>`;
+const accNum = document.querySelector('[data-field="3"] input').value || "";
+const accName = document.querySelector('[data-field="2"] input').value || "";
+const agentID = document.querySelector('[data-field="8"] input').value || document.querySelector('[data-field="9"] input').value || "";
+const requestType = document.getElementById("requestType")?.value || "";  // 👈 get dropdown value
+
+html += `<table style="width:auto; margin-bottom:10px;">
+  <tr>
+    <th>Account number</th>
+    <th>Account name</th>
+    <th>Request Type</th>
+    <th>Agent ID</th>
+  </tr>
+  <tr>
+    <td>${accNum}</td>
+    <td>${accName}</td>
+    <td>${requestType}</td> <!-- 👈 show here -->
+    <td>${agentID}</td>
+  </tr>
+</table>`;
 
   // --- Plans Table ---
   const plans = document.getElementById("plansContainer").querySelectorAll(".plan");
@@ -1051,5 +1063,6 @@ document.addEventListener("DOMContentLoaded", loadEmailDropdowns);
 </script>
 </body>
 </html>
+
 
 
