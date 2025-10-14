@@ -21,10 +21,27 @@
 </div>
 
 <div id="tab-content">
-  <!-- Load legacy page in webview -->
-  <webview id="mobility-webview" src="https://dsq-beta.vercel.app/index%20Msub.html" nodeintegration contextIsolation="false"></webview>
-  <webview id="fixed-webview" src="" style="display:none;"></webview>
-  <webview id="others-webview" src="" style="display:none;"></webview>
+  <!-- Mobility Submission loads legacy page -->
+  <webview 
+      id="mobility-webview" 
+      src="https://dsq-beta.vercel.app/index%20Msub.html" 
+      nodeintegration 
+      contextIsolation="false">
+  </webview>
+
+  <!-- Fixed Submission placeholder -->
+  <webview 
+      id="fixed-webview" 
+      src="" 
+      style="display:none;">
+  </webview>
+
+  <!-- Others placeholder -->
+  <webview 
+      id="others-webview" 
+      src="" 
+      style="display:none;">
+  </webview>
 </div>
 
 <script>
@@ -38,16 +55,24 @@ tabs.forEach(tab => {
     tabs.forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
 
+    // Hide all webviews
     mobilityView.style.display = 'none';
     fixedView.style.display = 'none';
     othersView.style.display = 'none';
 
+    // Show selected tab
     if(tab.dataset.tab === 'mobility') mobilityView.style.display = 'block';
     if(tab.dataset.tab === 'fixed') fixedView.style.display = 'block';
     if(tab.dataset.tab === 'others') othersView.style.display = 'block';
   });
 });
+
+// Optional: listen for webview ready to trigger file picker setup
+mobilityView.addEventListener('dom-ready', () => {
+  console.log('Mobility webview loaded');
+  // Example: enable devtools inside webview for debugging
+  // mobilityView.openDevTools();
+});
 </script>
 </body>
 </html>
-
