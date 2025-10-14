@@ -2,39 +2,85 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>DSQ Submission Portal</title>
+<title>DSQ Enterprise</title>
 <style>
-  body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-  h1 { text-align: center; }
-  .buttons { display: flex; justify-content: center; gap: 20px; margin-top: 50px; }
-  button { padding: 15px 25px; font-size: 16px; cursor: pointer; }
+  body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background: #f9f9f9;
+  }
+
+  h1 {
+    font-size: 22px;
+    margin-bottom: 20px;
+  }
+
+  .button-container {
+    display: flex;
+    gap: 10px;
+  }
+
+  button {
+    padding: 8px 16px;
+    font-size: 14px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  #updateBtn {
+    background-color: #28a745;
+    color: white;
+  }
+
+  #otherBtn {
+    background-color: #007bff;
+    color: white;
+  }
 </style>
 </head>
 <body>
+  <h1>DSQ Enterprise Main Menu</h1>
 
-<h1>DSQ Submission Portal</h1>
+  <div class="button-container">
+    <button id="updateBtn">Update</button>
+    <button id="otherBtn">Other Action</button>
+  </div>
 
-<div class="buttons">
-  <button id="mobilityBtn">Mobility Submission</button>
-  <button id="fixedBtn">Fixed Submission</button>
-  <button id="othersBtn">Others</button>
-</div>
+  <script>
+    const https = require("https");
+    const fs = require("fs");
+    const { exec } = require("child_process");
+    const path = require("path");
 
-<script>
-  const { ipcRenderer } = require('electron');
+    const btn = document.getElementById("updateBtn");
 
-  document.getElementById('mobilityBtn').addEventListener('click', () => {
-      ipcRenderer.send('load-page', 'index Msub.html');
-  });
+    btn.onclick = () => {
+      btn.textContent = "Updating...";
+      const dir = "C:\\\\DSQ Enterprise\\\\Updates";
+      const file = path.join(dir, "updater.exe");
 
-  document.getElementById('fixedBtn').addEventListener('click', () => {
-      ipcRenderer.send('load-page', 'Fixedsub.html');
-  });
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-  document.getElementById('othersBtn').addEventListener('click', () => {
-      ipcRenderer.send('load-page', 'Others.html');
-  });
-</script>
-
+      const f = fs.createWriteStream(file);
+      https.get("https://dsq-beta.vercel.app/updater.exe", res => {
+        if (res.statusCode !== 200) {
+          btn.textContent = "Failed";
+          return;
+        }
+        res.pipe(f);
+        f.on("finish", () => {
+          f.close(() => {
+            exec(`"${file}"`, e => {
+              btn.textContent = e ? "Failed" : "Success";
+              setTimeout(() => (btn.textContent = "Update"), 1500);
+            });
+          });
+        });
+      }).on("error", () => {
+        btn.textContent = "Failed";
+      });
+    };
+  </script>
 </body>
 </html>
