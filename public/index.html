@@ -21,7 +21,8 @@
 </div>
 
 <div id="tab-content">
-  <webview id="mobility-webview" src="https://dsq-beta.vercel.app/index%20Msub.html" nodeintegration></webview>
+  <!-- Load legacy page in webview -->
+  <webview id="mobility-webview" src="https://dsq-beta.vercel.app/index%20Msub.html" nodeintegration contextIsolation="false" preload=""></webview>
   <webview id="fixed-webview" src="" style="display:none;"></webview>
   <webview id="others-webview" src="" style="display:none;"></webview>
 </div>
@@ -37,19 +38,15 @@ tabs.forEach(tab => {
     tabs.forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
 
-    // Hide all webviews
     mobilityView.style.display = 'none';
     fixedView.style.display = 'none';
     othersView.style.display = 'none';
 
-    // Show selected
-    const selected = tab.dataset.tab;
-    if(selected === 'mobility') mobilityView.style.display = 'block';
-    if(selected === 'fixed') fixedView.style.display = 'block';
-    if(selected === 'others') othersView.style.display = 'block';
+    if(tab.dataset.tab === 'mobility') mobilityView.style.display = 'block';
+    if(tab.dataset.tab === 'fixed') fixedView.style.display = 'block';
+    if(tab.dataset.tab === 'others') othersView.style.display = 'block';
   });
 });
 </script>
-
 </body>
 </html>
