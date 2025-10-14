@@ -296,6 +296,15 @@ label.inline textarea {
   <!-- Section C – Plans -->
   <div class="col">
     <h2>Section C – Plans</h2>
+	  <div class="form-group">
+ 	 <label for="requestType"><b>Request Type:</b></label>
+ 	 <select id="requestType" class="form-control">
+    <option value="">Select Request Type</option>
+    <option value="New Activation">New Activation</option>
+    <option value="MNP">MNP</option>
+    <option value="Migration">Migration</option>
+  	</select>
+	</div>
     <button id="addPlanBtn" style="font-size:11px; margin-left:8px;">+ Add Plan</button>
     <div id="plansContainer"></div>
   </div>
@@ -547,7 +556,7 @@ function renderPreview() {
   const accName = document.querySelector('[data-field="2"] input').value || "";
   const agentID = document.querySelector('[data-field="8"] input').value || document.querySelector('[data-field="9"] input').value || "";
   html += `<table style="width:auto; margin-bottom:10px;">
-      <tr><th>Account number</th><th>Account name</th><th>Agent ID</th></tr>
+      <tr><th>Account number</th><th>Account name</th><th>Request Type</th><th>Agent ID</th></tr>
       <tr><td>${accNum}</td><td>${accName}</td><td>${agentID}</td></tr>
   </table>`;
 
@@ -1042,4 +1051,5 @@ document.addEventListener("DOMContentLoaded", loadEmailDropdowns);
 </script>
 </body>
 </html>
+
 
