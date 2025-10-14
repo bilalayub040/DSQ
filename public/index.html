@@ -1,40 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>DSQ Enterprise Portal</title>
+<meta charset="UTF-8" />
+<title>DSQ Portal - Tabs</title>
 <style>
-  body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: #f8f8f8;
-  }
-  .tabs {
-    display: flex;
-    background: #222;
-    color: white;
-    height: 38px;
-  }
-  .tab {
-    flex: 1;
-    text-align: center;
-    line-height: 38px;
-    cursor: pointer;
-    font-size: 13px;
-  }
-  .tab.active {
-    background: #444;
-    font-weight: bold;
-  }
-  iframe {
-    width: 100%;
-    height: calc(100vh - 38px);
-    border: none;
-    display: none;
-  }
-  iframe.visible {
-    display: block;
-  }
+  body { margin:0; font-family:Arial, sans-serif; background:#fafafa; overflow:hidden; }
+  .tabs { display:flex; height:40px; background:#222; color:#fff; }
+  .tab { flex:1; text-align:center; line-height:40px; cursor:pointer; font-size:13px; }
+  .tab:hover { background:#333; }
+  .tab.active { background:#444; font-weight:bold; }
+  iframe { width:100%; height:calc(100vh - 40px); border:none; display:none; }
+  iframe.visible { display:block; }
 </style>
 </head>
 <body>
@@ -45,9 +21,12 @@
   <div class="tab" data-view="others">Others</div>
 </div>
 
-<iframe id="mobility" class="visible" src="https://dsq-beta.vercel.app/index%20Msub.html"></iframe>
-<iframe id="fixed" src="about:blank"></iframe>
-<iframe id="others" src="about:blank"></iframe>
+<!-- mobility iframe loads the legacy page hosted at same domain -->
+<iframe id="mobility" class="visible" src="/index%20Msub.html"></iframe>
+
+<!-- placeholders — later replace these src with actual pages on your server -->
+<iframe id="fixed" src="/fixed.html"></iframe>
+<iframe id="others" src="/others.html"></iframe>
 
 <script>
   const tabs = document.querySelectorAll('.tab');
@@ -57,17 +36,12 @@
     others: document.getElementById('others')
   };
 
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelector('.tab.active')?.classList.remove('active');
-      tab.classList.add('active');
-      const viewToShow = tab.dataset.view;
-      for (const [key, frame] of Object.entries(frames)) {
-        frame.classList.toggle('visible', key === viewToShow);
-      }
-    });
-  });
+  tabs.forEach(tab => tab.addEventListener('click', () => {
+    document.querySelector('.tab.active')?.classList.remove('active');
+    tab.classList.add('active');
+    const view = tab.dataset.view;
+    Object.keys(frames).forEach(k => frames[k].classList.toggle('visible', k === view));
+  }));
 </script>
-
 </body>
 </html>
