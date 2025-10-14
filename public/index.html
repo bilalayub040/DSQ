@@ -1,73 +1,57 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>DSQ Enterprise</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #f8f8f8;
-      overflow: hidden;
-    }
-
-    .tabs {
-      display: flex;
-      background: #222;
-      color: white;
-      height: 40px;
-      align-items: center;
-    }
-
-    .tab {
-      flex: 1;
-      text-align: center;
-      cursor: pointer;
-      padding: 10px;
-      font-size: 13px;
-      transition: background 0.2s;
-    }
-
-    .tab:hover {
-      background: #333;
-    }
-
-    .tab.active {
-      background: #555;
-      font-weight: bold;
-    }
-
-    iframe {
-      border: none;
-      width: 100%;
-      height: calc(100vh - 40px);
-    }
-  </style>
+<meta charset="UTF-8">
+<title>DSQ Enterprise</title>
+<style>
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: #f8f8f8;
+  }
+  .tabs {
+    display: flex;
+    background: #222;
+    color: white;
+    height: 40px;
+    align-items: center;
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    cursor: pointer;
+    padding: 10px;
+    font-size: 13px;
+    transition: background 0.2s;
+  }
+  .tab:hover { background: #333; }
+  .tab.active { background: #555; font-weight: bold; }
+  webview {
+    width: 100%;
+    height: calc(100vh - 40px);
+  }
+</style>
 </head>
 <body>
 
-  <div class="tabs">
-    <div class="tab active" data-url="https://dsq-beta.vercel.app/index Msub.html">Mobility Submission</div>
-    <div class="tab" data-url="https://example.com/fixed">Fixed Submission</div>
-    <div class="tab" data-url="https://example.com/others">Others</div>
-  </div>
+<div class="tabs">
+  <div class="tab active" data-url="https://dsq-beta.vercel.app/index Msub.html">Mobility</div>
+  <div class="tab" data-url="https://dsq-beta.vercel.app/fixed.html">Fixed</div>
+  <div class="tab" data-url="https://dsq-beta.vercel.app/others.html">Others</div>
+</div>
 
-  <iframe id="content-frame" src="https://dsq-beta.vercel.app/index.html"></iframe>
+<webview id="mainView" src="https://dsq-beta.vercel.app/index.html" nodeintegration></webview>
 
-  <script>
-    const tabs = document.querySelectorAll('.tab');
-    const iframe = document.getElementById('content-frame');
-
-    tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelector('.tab.active')?.classList.remove('active');
-        tab.classList.add('active');
-        iframe.src = tab.dataset.url;
-      });
+<script>
+  const tabs = document.querySelectorAll('.tab');
+  const view = document.getElementById('mainView');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelector('.tab.active')?.classList.remove('active');
+      tab.classList.add('active');
+      view.src = tab.dataset.url;
     });
-  </script>
-
+  });
+</script>
 </body>
 </html>
-
