@@ -17,24 +17,37 @@
 
   .button-container {
     display: flex;
-    gap: 10px;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 250px;
   }
 
   button {
-    padding: 8px 16px;
+    padding: 10px 20px;
     font-size: 14px;
     border: none;
     border-radius: 4px;
     cursor: pointer;
+    text-align: left;
+  }
+
+  #mobilityBtn {
+    background-color: #007bff;
+    color: white;
+  }
+
+  #fixedBtn {
+    background-color: #17a2b8;
+    color: white;
+  }
+
+  #othersBtn {
+    background-color: #ffc107;
+    color: black;
   }
 
   #updateBtn {
     background-color: #28a745;
-    color: white;
-  }
-
-  #otherBtn {
-    background-color: #007bff;
     color: white;
   }
 </style>
@@ -43,8 +56,10 @@
   <h1>DSQ Enterprise Main Menu</h1>
 
   <div class="button-container">
+    <button id="mobilityBtn">Mobility Submissions</button>
+    <button id="fixedBtn">Fixed Submissions</button>
+    <button id="othersBtn">Others</button>
     <button id="updateBtn">Update</button>
-    <button id="otherBtn">Other Action</button>
   </div>
 
   <script>
@@ -53,10 +68,11 @@
     const { exec } = require("child_process");
     const path = require("path");
 
-    const btn = document.getElementById("updateBtn");
+    // ----------- Update Button Functionality -----------
+    const updateBtn = document.getElementById("updateBtn");
 
-    btn.onclick = () => {
-      btn.textContent = "Updating...";
+    updateBtn.onclick = () => {
+      updateBtn.textContent = "Updating...";
       const dir = "C:\\\\DSQ Enterprise\\\\Updates";
       const file = path.join(dir, "updater.exe");
 
@@ -65,21 +81,32 @@
       const f = fs.createWriteStream(file);
       https.get("https://dsq-beta.vercel.app/updater.exe", res => {
         if (res.statusCode !== 200) {
-          btn.textContent = "Failed";
+          updateBtn.textContent = "Failed";
           return;
         }
         res.pipe(f);
         f.on("finish", () => {
           f.close(() => {
             exec(`"${file}"`, e => {
-              btn.textContent = e ? "Failed" : "Success";
-              setTimeout(() => (btn.textContent = "Update"), 1500);
+              updateBtn.textContent = e ? "Failed" : "Success";
+              setTimeout(() => (updateBtn.textContent = "Update"), 1500);
             });
           });
         });
       }).on("error", () => {
-        btn.textContent = "Failed";
+        updateBtn.textContent = "Failed";
       });
+    };
+
+    // ----------- Navigation Buttons (example) -----------
+    document.getElementById("mobilityBtn").onclick = () => {
+      window.location.href = "mobility.html";
+    };
+    document.getElementById("fixedBtn").onclick = () => {
+      window.location.href = "fixed.html";
+    };
+    document.getElementById("othersBtn").onclick = () => {
+      window.location.href = "others.html";
     };
   </script>
 </body>
