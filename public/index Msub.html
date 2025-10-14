@@ -365,15 +365,6 @@ btn.onclick=()=>{
   }).on("error",()=>btn.textContent="Failed");
 };
 //update button logic
-	//home button
-	<script>
-  const { ipcRenderer } = require('electron');
-  document.getElementById('mainMenuBtn').addEventListener('click', () => {
-      // Load the main menu page (index.html) from the server
-      ipcRenderer.send('load-page', 'index.html');
-  });
-	</script>
-	//home button
 // Section A logic
 const accountToggle = document.getElementById("accountToggle");
 const sectionA = document.querySelectorAll(".row")[0].children[0];
@@ -1075,9 +1066,17 @@ async function loadEmailDropdowns() {
 
 document.addEventListener("DOMContentLoaded", loadEmailDropdowns);
 
+	//home button
+  const { ipcRenderer } = require('electron');
+  document.getElementById('mainMenuBtn').addEventListener('click', () => {
+      // Load the main menu page (index.html) from the server
+      ipcRenderer.send('load-page', 'index.html');
+  });
+	//home button
 </script>
 </body>
 </html>
+
 
 
 
