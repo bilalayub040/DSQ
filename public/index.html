@@ -2,39 +2,44 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>DSQ Tabs</title>
+<title>DSQ Enterprise - Tabs</title>
 <style>
-body { font-family: Arial; margin: 0; }
-.tab-buttons { display: flex; background: #ddd; }
-.tab-buttons button { flex: 1; padding: 10px; cursor: pointer; border: none; background: #ccc; }
-.tab-buttons button.active { background: #fff; font-weight: bold; }
-.tab-content { width: 100%; height: calc(100vh - 40px); border: none; }
+  body { font-family: Arial; margin: 10px; }
+  .tabs { display: flex; gap: 5px; margin-bottom: 10px; }
+  .tab { padding: 5px 10px; background: #eee; cursor: pointer; border-radius: 3px; }
+  .tab.active { background: #ccc; }
+  webview { width: 100%; height: 800px; border: 1px solid #000; }
 </style>
 </head>
 <body>
 
-<div class="tab-buttons">
-    <button data-tab="mobility" class="active">Mobility Submission</button>
-    <button data-tab="fixed">Fixed Submission</button>
-    <button data-tab="others">Others</button>
+<div class="tabs">
+  <div class="tab active" data-tab="mobility">Mobility Submission</div>
+  <div class="tab" data-tab="fixed">Fixed Submission</div>
+  <div class="tab" data-tab="others">Others</div>
 </div>
 
-<iframe id="mobility" src="https://dsq-beta.vercel.app/index%20Msub.html" class="tab-content"></iframe>
-<iframe id="fixed" src="" class="tab-content" style="display:none;"></iframe>
-<iframe id="others" src="" class="tab-content" style="display:none;"></iframe>
+<!-- Webview container -->
+<webview id="tabWebview" src="https://dsq-beta.vercel.app/index%20Msub.html" nodeintegration></webview>
 
 <script>
-const tabs = document.querySelectorAll('.tab-buttons button');
-const iframes = document.querySelectorAll('iframe');
+  const tabs = document.querySelectorAll('.tab');
+  const webview = document.getElementById('tabWebview');
 
-tabs.forEach(btn => {
-    btn.addEventListener('click', () => {
-        tabs.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const target = btn.dataset.tab;
-        iframes.forEach(f => f.style.display = f.id === target ? 'block' : 'none');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      if(tab.dataset.tab === 'mobility') {
+        webview.src = "https://dsq-beta.vercel.app/index%20Msub.html";
+      } else if(tab.dataset.tab === 'fixed') {
+        webview.src = "about:blank"; // placeholder, replace later
+      } else if(tab.dataset.tab === 'others') {
+        webview.src = "about:blank"; // placeholder
+      }
     });
-});
+  });
 </script>
 
 </body>
