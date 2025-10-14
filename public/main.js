@@ -12,7 +12,7 @@ async function createWindow() {
     await ses.clearStorageData();
 
     const win = new BrowserWindow({
-        width: 1200,
+        width: 850,
         height: 900,
         webPreferences: {
             nodeIntegration: true,
@@ -68,6 +68,7 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
+
 
 
 
