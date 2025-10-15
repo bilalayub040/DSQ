@@ -1,4 +1,4 @@
 Download app/sub.exe > root/apps/sub.exe
 Download /main.js > root/main.js
 Download app/load.exe > root/assets/load.exe
-Download icon.ico > root/icon.ico
+Download /icon.ico > root/icon.ico
